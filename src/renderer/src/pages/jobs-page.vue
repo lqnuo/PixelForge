@@ -78,11 +78,12 @@ async function downloadFirstResult(jobId: string) {
 
 <template>
   <div class="h-full flex flex-col">
-    <div class="toolbar grid grid-cols-2">
+    <div class="toolbar flex items-center justify-between">
       <div class="flex items-center gap-2">
         <button class="btn btn-outline" :disabled="selected.size===0" @click="retrySelected">重试所选</button>
       </div>
-      <div class="flex items-center justify-end gap-2">
+      <div class="flex items-center gap-3">
+        <span class="text-xs px-2 py-1 rounded bg-[hsl(var(--muted))] text-[hsl(var(--muted-foreground))]">共 {{ total }} 个任务</span>
         <select v-model="statusFilter" @change="fetchJobs" class="select min-w-28">
           <option :value="null">全部状态</option>
           <option value="queued">排队中</option>
@@ -92,8 +93,6 @@ async function downloadFirstResult(jobId: string) {
         </select>
       </div>
     </div>
-
-    <div class="p-3 text-sm text-neutral-500 border-b">共 {{ total }} 个任务</div>
 
     <div class="flex-1 overflow-auto">
       <div class="grid grid-cols-12 p-3 text-sm font-medium text-neutral-500">
@@ -105,7 +104,7 @@ async function downloadFirstResult(jobId: string) {
         <div class="col-span-2">时间</div>
         <div class="col-span-1">操作</div>
       </div>
-      <div v-for="j in jobs" :key="j.id" class="grid grid-cols-12 items-center p-3 border-t hover:bg-[hsl(var(--muted))] transition-colors">
+      <div v-for="j in jobs" :key="j.id" class="grid grid-cols-12 items-center px-3 py-2 border-t hover:bg-[hsl(var(--muted))] transition-colors">
         <div class="col-span-1"><input type="checkbox" :checked="isChecked(j.id)" @change="(e:any)=>toggle(j.id,e.target.checked)" /></div>
         <div class="col-span-3 flex items-center gap-2">
           <img v-if="imageMap.get(j.sourceImageId)?.previewBase64" :src="dataUrl(imageMap.get(j.sourceImageId)!.mimeType, imageMap.get(j.sourceImageId)!.previewBase64)" class="h-10 w-10 object-cover rounded" />

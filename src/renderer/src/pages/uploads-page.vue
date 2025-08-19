@@ -777,7 +777,7 @@ async function moveSingleToGroup(groupId: string | null) {
           </div>
           
           <!-- 信息区域 -->
-          <div class="p-3">
+          <div class="p-1">
             <h3 class="font-medium text-sm text-[hsl(var(--foreground))] truncate mb-1">
               {{ item.filename || item.id }}
             </h3>
