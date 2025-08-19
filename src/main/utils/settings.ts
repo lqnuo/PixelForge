@@ -6,6 +6,14 @@ export type SettingKey =
   | 'dashscope_api_key'
   | 'dashscope_endpoint'
   | 'dashscope_model'
+  // OpenAI
+  | 'openai_api_key'
+  | 'openai_base_url'
+  | 'openai_image_model'
+  // DeepSeek
+  | 'deepseek_api_key'
+  | 'deepseek_base_url'
+  | 'deepseek_image_model'
 
 export function getSetting(key: SettingKey): string | null {
   const db = getDb()
