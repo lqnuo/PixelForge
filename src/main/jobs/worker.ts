@@ -1,0 +1,61 @@
+import { getDb } from '../db'
+import { jobs, images, results } from '../db/schema'
+import { eq } from 'drizzle-orm'
+import { randomUUID } from 'crypto'
+
+let running = false
+let queue: string[] = []
+const CONCURRENCY = 1
+let active = 0
+
+export function enqueueJob(jobId: string) {
+  queue.push(jobId)
+  tick()
+}
+
+export function startWorker() {
+  running = true
+  tick()
+}
+
+function tick() {
+  if (!running) return
+  if (active >= CONCURRENCY) return
+  const next = queue.shift()
+  if (!next) return
+  active++
+  processJob(next)
+    .catch(() => {})
+    .finally(() => {
+      active--
+      setImmediate(tick)
+    })
+}
+
+async function processJob(jobId: string) {
+  const db = getDb()
+  // mark processing
+  db.update(jobs).set({ status: 'processing' }).where(eq(jobs.id, jobId)).run()
+  // load job and image
+  const job = db.select().from(jobs).where(eq(jobs.id, jobId)).get()
+  if (!job) return
+  const img = db.select().from(images).where(eq(images.id, job.sourceImageId)).get()
+  if (!img) {
+    db.update(jobs).set({ status: 'failed', error: 'SOURCE_IMAGE_NOT_FOUND' }).where(eq(jobs.id, jobId)).run()
+    return
+  }
+  // Mock generation: copy the source buffer as result
+  const rid = randomUUID()
+  db.insert(results).values({
+    id: rid,
+    jobId: jobId,
+    sourceImageId: job.sourceImageId,
+    mimeType: img.mimeType,
+    width: img.width ?? null,
+    height: img.height ?? null,
+    dataBlob: img.dataBlob as unknown as Buffer,
+    previewBase64: img.previewBase64 ?? null,
+  }).run()
+  db.update(jobs).set({ status: 'done', error: null }).where(eq(jobs.id, jobId)).run()
+}
+
