@@ -19,14 +19,12 @@ function dataUrl(mime: string, base64?: string | null) {
 </script>
 
 <template>
-  <div class="col-span-5 p-4 space-y-4">
-    <div class="font-semibold flex items-center justify-between">
+  <div class="col-span-5 h-full flex flex-col">
+    <div class="sticky top-0 z-10 bg-[hsl(var(--background))] border-b p-4 font-semibold flex items-center justify-between">
       <span>结果预览</span>
-      <button class="px-2 py-1 text-xs rounded border hover:bg-neutral-50" @click="emit('openDownloadsDir')">
-        打开下载目录
-      </button>
+      <button class="btn btn-outline !px-2 !py-1 text-xs" @click="emit('openDownloadsDir')">打开下载目录</button>
     </div>
-    <div class="space-y-3 overflow-auto" style="max-height: calc(100vh - 90px)">
+    <div class="space-y-3 overflow-auto p-4 flex-1">
       <div v-for="r in results" :key="r.id" class="card">
         <div class="grid grid-cols-2 gap-3">
           <div>
@@ -51,4 +49,3 @@ function dataUrl(mime: string, base64?: string | null) {
 </template>
 
 <style scoped></style>
-

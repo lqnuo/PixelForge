@@ -20,7 +20,11 @@ const api = {
   job: {
     create: (params: { imageId: string; styleId?: string | null; aspectRatio: string }) =>
       ipcRenderer.invoke('job.create', params),
+    bulkCreate: (params: { imageIds: string[]; styleId?: string | null; aspectRatio: string }) =>
+      ipcRenderer.invoke('job.bulkCreate', params),
     listByImage: (imageId: string) => ipcRenderer.invoke('job.listByImage', { imageId }),
+    list: (params: { page?: number; pageSize?: number; status?: string | null } = {}) =>
+      ipcRenderer.invoke('job.list', params),
     retry: (jobId: string) => ipcRenderer.invoke('job.retry', { jobId })
   },
   result: {

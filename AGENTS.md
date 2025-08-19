@@ -24,6 +24,17 @@
 - Naming: PascalCase React components, camelCase variables/functions, kebab-case file/dir names.
 - CSS: UnoCSS in renderer (presetWind + transformers); keep custom utilities in `globals.css` and component‑scoped classes in components.
 
+## Renderer UI Structure
+- 左侧侧边栏导航：`素材（Uploads）`、`任务（Jobs）`。
+- 右侧内容区：对应页面内容，均带顶栏工具区，主体可滚动。
+- `素材`：网格列表 + 分页 + 复选 + 批量操作（删除、风格/尺寸后批量生成）。
+- `任务`：列表 + 状态筛选 + 分页 + 批量重试；可下载首个生成结果。
+- 无路由库：用本地状态切换，降低复杂度。
+
+## IPC Additions
+- `job.bulkCreate({ imageIds, styleId?, aspectRatio })`：为多张素材批量创建任务（入队）。
+- `job.list({ page?, pageSize?, status? }) -> { items, total, page, pageSize }`：分页列出任务，支持状态筛选。
+
 ## Testing Guidelines
 - No unit test runner yet. Use `pnpm typecheck` and `pnpm lint` as gates.
 - Manual QA: upload → select style → generate → preview → download on your OS; verify DB file at `Electron app userData/app.db`.

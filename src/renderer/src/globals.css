@@ -69,30 +69,10 @@ html, body, #root {
 
 @layer base {
   * {
-    @apply border-border;
+    border-color: hsl(var(--border));
   }
   body {
-    @apply bg-background text-foreground;
+    background-color: hsl(var(--background));
+    color: hsl(var(--foreground));
   }
-}
-
-.btn {
-  @apply inline-flex items-center justify-center rounded px-3 py-1.5 text-sm transition-colors border border-transparent disabled:opacity-50 disabled:cursor-not-allowed;
-}
-
-.btn-primary {
-  @apply btn;
-  background-color: hsl(var(--primary));
-  color: white;
-}
-
-.btn-outline {
-  @apply btn bg-white hover:bg-neutral-50;
-  border-color: hsl(var(--border));
-  color: hsl(var(--foreground));
-}
-
-.card {
-  @apply rounded border p-3 bg-white;
-  border-color: hsl(var(--border));
 }

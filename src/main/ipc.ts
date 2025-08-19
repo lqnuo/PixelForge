@@ -152,6 +152,52 @@ export function registerIpcHandlers() {
     return row
   })
 
+  ipcMain.handle(
+    'job.bulkCreate',
+    async (
+      evt,
+      payload: { imageIds: string[]; styleId?: string | null; aspectRatio: string }
+    ) => {
+      if (!isTrustedSender(evt))
+        return { ok: false, code: 'E_FORBIDDEN', message: 'untrusted sender' }
+      const imageIds = payload?.imageIds || []
+      if (!Array.isArray(imageIds) || imageIds.length === 0)
+        return { ok: false, code: 'E_VALIDATION', message: 'imageIds required' }
+      if (!payload?.aspectRatio || typeof payload.aspectRatio !== 'string') {
+        return { ok: false, code: 'E_VALIDATION', message: 'aspectRatio required' }
+      }
+      if (!['1:1', '3:4'].includes(payload.aspectRatio)) {
+        return { ok: false, code: 'E_VALIDATION', message: 'aspectRatio invalid' }
+      }
+      if (payload.styleId) {
+        const existStyle = db
+          .select({ id: styles.id })
+          .from(styles)
+          .where(eq(styles.id, payload.styleId))
+          .get()
+        if (!existStyle) return { ok: false, code: 'E_NOT_FOUND', message: 'style not found' }
+      }
+      const created: string[] = []
+      for (const imgId of imageIds) {
+        const existImg = db.select({ id: images.id }).from(images).where(eq(images.id, imgId)).get()
+        if (!existImg) continue
+        const id = randomUUID()
+        const row = {
+          id,
+          sourceImageId: imgId,
+          styleId: payload.styleId ?? null,
+          aspectRatio: payload.aspectRatio,
+          status: 'queued',
+          error: null as string | null,
+        }
+        await withRetry(() => db.insert(jobs).values(row).run())
+        enqueueJob(id)
+        created.push(id)
+      }
+      return { ok: true, count: created.length, ids: created }
+    }
+  )
+
   ipcMain.handle('job.retry', async (_evt, payload: { jobId: string }) => {
     if (!payload?.jobId) return { ok: false, code: 'E_VALIDATION', message: 'jobId required' }
     const j = db.select().from(jobs).where(eq(jobs.id, payload.jobId)).get()
@@ -199,6 +245,26 @@ export function registerIpcHandlers() {
     const rows = db.select().from(jobs).where(eq(jobs.sourceImageId, payload.imageId)).all()
     return rows
   })
+
+  ipcMain.handle(
+    'job.list',
+    async (
+      evt,
+      payload: { page?: number; pageSize?: number; status?: string | null }
+    ) => {
+      if (!isTrustedSender(evt))
+        return { ok: false, code: 'E_FORBIDDEN', message: 'untrusted sender' }
+      const page = Math.max(1, Math.floor(payload?.page ?? 1))
+      const pageSize = Math.min(100, Math.max(1, Math.floor(payload?.pageSize ?? 20)))
+      // fetch all (small scale) and slice; keeps implementation simple
+      const all = db.select().from(jobs).orderBy(desc(jobs.createdAt)).all()
+      const filtered = payload?.status ? all.filter((j) => j.status === payload.status) : all
+      const total = filtered.length
+      const offset = (page - 1) * pageSize
+      const items = filtered.slice(offset, offset + pageSize)
+      return { items, total, page, pageSize }
+    }
+  )
 
   ipcMain.handle('style.list', async (evt) => {
     if (!isTrustedSender(evt)) return { ok: false, code: 'E_FORBIDDEN', message: 'untrusted sender' }

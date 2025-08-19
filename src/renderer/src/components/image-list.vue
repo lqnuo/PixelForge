@@ -58,14 +58,14 @@ async function onInputChange(evt: Event) {
 
 <template>
   <div
-    class="col-span-3 border-r p-3 space-y-3"
-    :class="{ 'bg-neutral-50 ring-2 ring-black': isDragging }"
+    class="col-span-3 border-r h-full flex flex-col"
+    :class="{ 'bg-[hsl(var(--muted))] ring-2 ring-[hsl(var(--ring))]': isDragging }"
     @dragover.prevent="isDragging = true"
     @dragenter.prevent="isDragging = true"
     @dragleave="isDragging = false"
     @drop="onDropFiles"
   >
-    <div class="flex items-center justify-between">
+    <div class="sticky top-0 z-10 bg-[hsl(var(--background))] border-b p-3 flex items-center justify-between">
       <div class="font-semibold">待处理</div>
       <label class="cursor-pointer">
         <button class="btn btn-primary pointer-events-none">上传</button>
@@ -78,14 +78,13 @@ async function onInputChange(evt: Event) {
       item-key="id"
       handle=".drag-handle"
       animation="200"
-      class="space-y-2 overflow-auto"
-      style="max-height: calc(100vh - 90px)"
+      class="space-y-2 overflow-auto p-3 flex-1"
     >
       <template #item="{ element }">
         <button
           @click="emit('select', element.id)"
-          class="w-full flex items-center gap-2 rounded p-2 border hover:bg-neutral-50"
-          :class="{ 'ring-2 ring-black': selectedImageId === element.id }"
+          class="w-full flex items-center gap-2 rounded-md p-2 border hover:bg-[hsl(var(--muted))] transition-colors"
+          :class="{ 'ring-2 ring-[hsl(var(--ring))]': selectedImageId === element.id }"
         >
           <GripVertical class="w-4 h-4 text-neutral-400 drag-handle" />
           <img :src="dataUrl(element.mimeType, element.previewBase64)" class="h-12 w-12 object-cover rounded" />
@@ -97,15 +96,12 @@ async function onInputChange(evt: Event) {
       </template>
     </Draggable>
 
-    <div v-if="list.length === 0" class="text-sm text-neutral-500">请先上传图片（支持拖拽）</div>
+    <div v-if="list.length === 0" class="text-sm text-neutral-500 p-3">请先上传图片（支持拖拽）</div>
 
-    <div class="pt-2">
-      <button class="btn btn-outline" :disabled="!selectedImageId" @click="emit('deleteSelected')">
-        删除所选
-      </button>
+    <div class="p-3 border-t">
+      <button class="btn btn-outline w-full" :disabled="!selectedImageId" @click="emit('deleteSelected')">删除所选</button>
     </div>
   </div>
 </template>
 
 <style scoped></style>
-

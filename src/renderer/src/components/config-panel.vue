@@ -19,8 +19,9 @@ const emit = defineEmits<{
 </script>
 
 <template>
-  <div class="col-span-4 border-r p-4 space-y-4">
-    <div class="font-semibold">配置</div>
+  <div class="col-span-4 border-r h-full flex flex-col">
+    <div class="sticky top-0 z-10 bg-[hsl(var(--background))] border-b p-4 font-semibold">配置</div>
+    <div class="p-4 space-y-4 overflow-auto flex-1">
     <div v-if="lastError" class="p-2 text-sm text-red-700 bg-red-50 border border-red-200 rounded">
       出错了：{{ lastError }}
       <button
@@ -54,8 +55,10 @@ const emit = defineEmits<{
         >{{ a }}</button>
       </div>
     </div>
-    <div>
-      <button class="btn btn-primary" :disabled="isGenerating" @click="emit('generate')">
+    </div>
+    <div class="p-4 border-t">
+      <button class="btn btn-primary w-full" :disabled="isGenerating" @click="emit('generate')">
+        <span v-if="isGenerating" class="inline-block h-3 w-3 mr-2 align-[-2px] border-2 border-current border-t-transparent rounded-full animate-spin"></span>
         {{ isGenerating ? '生成中…' : '开始生成' }}
       </button>
     </div>
@@ -63,4 +66,3 @@ const emit = defineEmits<{
 </template>
 
 <style scoped></style>
-
