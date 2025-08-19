@@ -14,7 +14,7 @@ const form = reactive({
   qwen: {
     apiKey: '',
     endpoint: 'https://dashscope.aliyuncs.com/api/v1/services/images/editing',
-    model: 'qwen-vl-plus'
+    model: 'qwen-image-edit'
   },
   openai: {
     apiKey: '',
@@ -27,6 +27,24 @@ const form = reactive({
     imageModel: 'deepseek-image'
   }
 })
+
+// 预设可选模型（占位，不发请求）
+const modelOptions: Record<Provider, Array<{ label: string; value: string }>> = {
+  qwen: [
+    { label: 'qwen-image-edit', value: 'qwen-image-edit' },
+    { label: 'qwen-vl-plus', value: 'qwen-vl-plus' },
+    { label: 'qwen-vl-max', value: 'qwen-vl-max' },
+    { label: 'qwen-vl-turbo', value: 'qwen-vl-turbo' }
+  ],
+  openai: [
+    { label: 'gpt-image-1', value: 'gpt-image-1' },
+    { label: 'dall-e-3', value: 'dall-e-3' }
+  ],
+  deepseek: [
+    { label: 'deepseek-image', value: 'deepseek-image' },
+    { label: 'deepseek-vl', value: 'deepseek-vl' }
+  ]
+}
 
 const titles: Record<Provider, string> = {
   qwen: 'Qwen / DashScope 配置',
@@ -41,7 +59,7 @@ async function load() {
     form.qwen.apiKey = all['dashscope_api_key'] || ''
     form.qwen.endpoint =
       all['dashscope_endpoint'] || 'https://dashscope.aliyuncs.com/api/v1/services/images/editing'
-    form.qwen.model = all['dashscope_model'] || 'qwen-vl-plus'
+    form.qwen.model = all['dashscope_model'] || 'qwen-image-edit'
     // OpenAI
     form.openai.apiKey = all['openai_api_key'] || ''
     form.openai.baseUrl = all['openai_base_url'] || 'https://api.openai.com/v1'
@@ -126,8 +144,11 @@ onMounted(load)
               </label>
               <label class="flex flex-col gap-1">
                 <span class="text-sm text-[hsl(var(--muted-foreground))]">Model</span>
-                <input v-model="form.qwen.model" type="text" class="input" />
-                <span class="text-xs text-[hsl(var(--muted-foreground))]">示例：qwen-vl-plus（按控制台实际模型调整）</span>
+                <select v-model="form.qwen.model" class="input">
+                  <option v-for="opt in modelOptions.qwen" :key="opt.value" :value="opt.value">
+                    {{ opt.label }}
+                  </option>
+                </select>
               </label>
             </template>
 
@@ -144,8 +165,11 @@ onMounted(load)
               </label>
               <label class="flex flex-col gap-1">
                 <span class="text-sm text-[hsl(var(--muted-foreground))]">Image Model</span>
-                <input v-model="form.openai.imageModel" type="text" class="input" />
-                <span class="text-xs text-[hsl(var(--muted-foreground))]">示例：gpt-image-1（仅保存配置，不发请求）</span>
+                <select v-model="form.openai.imageModel" class="input">
+                  <option v-for="opt in modelOptions.openai" :key="opt.value" :value="opt.value">
+                    {{ opt.label }}
+                  </option>
+                </select>
               </label>
             </template>
 
@@ -162,8 +186,11 @@ onMounted(load)
               </label>
               <label class="flex flex-col gap-1">
                 <span class="text-sm text-[hsl(var(--muted-foreground))]">Image Model</span>
-                <input v-model="form.deepseek.imageModel" type="text" class="input" />
-                <span class="text-xs text-[hsl(var(--muted-foreground))]">示例：deepseek-image（占位，后续按实际模型调整）</span>
+                <select v-model="form.deepseek.imageModel" class="input">
+                  <option v-for="opt in modelOptions.deepseek" :key="opt.value" :value="opt.value">
+                    {{ opt.label }}
+                  </option>
+                </select>
               </label>
             </template>
 

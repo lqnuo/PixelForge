@@ -19,7 +19,7 @@ export async function outpaintWithQwen(
   const endpoint =
     getSetting('dashscope_endpoint')?.trim() ||
     'https://dashscope.aliyuncs.com/api/v1/services/images/editing'
-  const model = getSetting('dashscope_model')?.trim() || 'qwen-vl-plus'
+  const model = getSetting('dashscope_model')?.trim() || 'qwen-image-edit'
 
   const size = calcTargetSize(aspect)
 
