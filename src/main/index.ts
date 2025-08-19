@@ -6,6 +6,7 @@ import { initDb } from './db'
 import { registerIpcHandlers } from './ipc'
 import { seedStyles } from './styles/seed'
 import { startWorker } from './jobs/worker'
+import { logger } from './utils/log'
 
 function createWindow(): void {
   // Create the browser window.
@@ -24,6 +25,7 @@ function createWindow(): void {
 
   mainWindow.on('ready-to-show', () => {
     mainWindow.show()
+    logger.info('Main window ready')
   })
 
   mainWindow.webContents.setWindowOpenHandler((details) => {
@@ -46,6 +48,7 @@ function createWindow(): void {
 app.whenReady().then(() => {
   // Set app user model id for windows
   electronApp.setAppUserModelId('com.electron')
+  logger.info('App starting...')
 
   // Default open or close DevTools by F12 in development
   // and ignore CommandOrControl + R in production.
@@ -56,9 +59,11 @@ app.whenReady().then(() => {
 
   // Initialize DB and IPC handlers
   initDb()
+  logger.info('Database initialized')
   seedStyles()
   registerIpcHandlers()
   startWorker()
+  logger.info('IPC and worker started')
 
   createWindow()
 
@@ -74,6 +79,7 @@ app.whenReady().then(() => {
 // explicitly with Cmd + Q.
 app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') {
+    logger.info('All windows closed; quitting')
     app.quit()
   }
 })

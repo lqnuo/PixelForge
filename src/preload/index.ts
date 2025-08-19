@@ -14,12 +14,14 @@ const api = {
         dataBase64: string
       }>
     ) => ipcRenderer.invoke('image.upload', { items }),
-    list: () => ipcRenderer.invoke('image.list')
+    list: () => ipcRenderer.invoke('image.list'),
+    delete: (imageId: string) => ipcRenderer.invoke('image.delete', { imageId })
   },
   job: {
     create: (params: { imageId: string; styleId?: string | null; aspectRatio: string }) =>
       ipcRenderer.invoke('job.create', params),
-    listByImage: (imageId: string) => ipcRenderer.invoke('job.listByImage', { imageId })
+    listByImage: (imageId: string) => ipcRenderer.invoke('job.listByImage', { imageId }),
+    retry: (jobId: string) => ipcRenderer.invoke('job.retry', { jobId })
   },
   result: {
     listByImage: (imageId: string) => ipcRenderer.invoke('result.listByImage', { imageId }),
@@ -31,6 +33,8 @@ const api = {
   file: {
     download: (resultId: string, suggestedName?: string) =>
       ipcRenderer.invoke('file.download', { resultId, suggestedName })
+    ,
+    openDownloadsDir: () => ipcRenderer.invoke('file.openDownloadsDir')
   },
   db: {
     clear: (confirmToken: string) => ipcRenderer.invoke('db.clear', { confirmToken })

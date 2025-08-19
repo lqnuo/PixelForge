@@ -1,4 +1,4 @@
-import { ipcMain, dialog } from 'electron'
+import { ipcMain, dialog, IpcMainInvokeEvent, shell, app } from 'electron'
 import { randomUUID } from 'crypto'
 import { getDb } from './db'
 import { images, jobs, results, styles } from './db/schema'
@@ -6,6 +6,9 @@ import { sha256 } from './utils/crypto'
 import { eq, desc } from 'drizzle-orm'
 import { writeFileSync } from 'fs'
 import { enqueueJob } from './jobs/worker'
+import { logger } from './utils/log'
+import { withRetry } from './utils/retry'
+import { isArray, isString, validateUploadItem } from './utils/validate'
 
 type UploadItem = {
   filename: string
@@ -21,10 +24,29 @@ type UploadItem = {
 export function registerIpcHandlers() {
   const db = getDb()
 
-  ipcMain.handle('image.upload', async (_evt, payload: { items: UploadItem[] }) => {
+  function isTrustedSender(evt: IpcMainInvokeEvent): boolean {
+    try {
+      const url = evt?.senderFrame?.url || ''
+      if (!url) return false
+      if (url.startsWith('file://')) return true
+      // allow localhost dev server
+      if (url.startsWith('http://localhost') || url.startsWith('http://127.0.0.1')) return true
+      return false
+    } catch {
+      return false
+    }
+  }
+
+  ipcMain.handle('image.upload', async (evt, payload: { items: UploadItem[] }) => {
+    if (!isTrustedSender(evt)) return { ok: false, code: 'E_FORBIDDEN', message: 'untrusted sender' }
     const items = payload?.items ?? []
+    if (!isArray(items)) {
+      logger.warn('image.upload validation failed: items not array')
+      return { ok: false, code: 'E_VALIDATION', message: 'items must be array' }
+    }
     const inserted: any[] = []
     for (const it of items) {
+      if (!validateUploadItem(it)) continue
       const buf = Buffer.from(it.dataBase64, 'base64')
       const hash = sha256(buf)
       // check duplicate
@@ -45,7 +67,7 @@ export function registerIpcHandlers() {
         dataBlob: buf,
         previewBase64: it.previewBase64 ?? null,
       }
-      db.insert(images).values(row).run()
+      await withRetry(() => db.insert(images).values(row).run())
       inserted.push(row)
     }
     // lightweight return (without BLOB)
@@ -62,7 +84,25 @@ export function registerIpcHandlers() {
     }))
   })
 
-  ipcMain.handle('image.list', async (_evt) => {
+  ipcMain.handle('image.delete', async (evt, payload: { imageId: string }) => {
+    if (!isTrustedSender(evt)) return { ok: false, code: 'E_FORBIDDEN', message: 'untrusted sender' }
+    if (!payload?.imageId) return { ok: false, code: 'E_VALIDATION', message: 'imageId required' }
+    const exist = db.select({ id: images.id }).from(images).where(eq(images.id, payload.imageId)).get()
+    if (!exist) return { ok: false, code: 'E_NOT_FOUND', message: 'image not found' }
+    try {
+      // Remove results by image then jobs by image then the image
+      db.delete(results).where(eq(results.sourceImageId, payload.imageId)).run()
+      db.delete(jobs).where(eq(jobs.sourceImageId, payload.imageId)).run()
+      db.delete(images).where(eq(images.id, payload.imageId)).run()
+      return { ok: true }
+    } catch (e) {
+      logger.error('image.delete failed', e)
+      return { ok: false, code: 'E_IO', message: 'failed to delete' }
+    }
+  })
+
+  ipcMain.handle('image.list', async (evt) => {
+    if (!isTrustedSender(evt)) return { ok: false, code: 'E_FORBIDDEN', message: 'untrusted sender' }
     const rows = db.select({
       id: images.id,
       filename: images.filename,
@@ -77,7 +117,27 @@ export function registerIpcHandlers() {
     return rows
   })
 
-  ipcMain.handle('job.create', async (_evt, payload: { imageId: string; styleId?: string | null; aspectRatio: string }) => {
+  ipcMain.handle('job.create', async (evt, payload: { imageId: string; styleId?: string | null; aspectRatio: string }) => {
+    if (!isTrustedSender(evt)) return { ok: false, code: 'E_FORBIDDEN', message: 'untrusted sender' }
+    if (!payload?.imageId || typeof payload.imageId !== 'string') {
+      return { ok: false, code: 'E_VALIDATION', message: 'imageId required' }
+    }
+    if (!payload?.aspectRatio || typeof payload.aspectRatio !== 'string') {
+      return { ok: false, code: 'E_VALIDATION', message: 'aspectRatio required' }
+    }
+    if (!['1:1','3:4'].includes(payload.aspectRatio)) {
+      return { ok: false, code: 'E_VALIDATION', message: 'aspectRatio invalid' }
+    }
+    const existImg = db.select({ id: images.id }).from(images).where(eq(images.id, payload.imageId)).get()
+    if (!existImg) {
+      return { ok: false, code: 'E_NOT_FOUND', message: 'image not found' }
+    }
+    if (payload.styleId) {
+      const existStyle = db.select({ id: styles.id }).from(styles).where(eq(styles.id, payload.styleId)).get()
+      if (!existStyle) {
+        return { ok: false, code: 'E_NOT_FOUND', message: 'style not found' }
+      }
+    }
     const id = randomUUID()
     const row = {
       id,
@@ -87,12 +147,23 @@ export function registerIpcHandlers() {
       status: 'queued',
       error: null as string | null,
     }
-    db.insert(jobs).values(row).run()
+    await withRetry(() => db.insert(jobs).values(row).run())
     enqueueJob(id)
     return row
   })
 
-  ipcMain.handle('result.listByImage', async (_evt, payload: { imageId: string }) => {
+  ipcMain.handle('job.retry', async (_evt, payload: { jobId: string }) => {
+    if (!payload?.jobId) return { ok: false, code: 'E_VALIDATION', message: 'jobId required' }
+    const j = db.select().from(jobs).where(eq(jobs.id, payload.jobId)).get()
+    if (!j) return { ok: false, code: 'E_NOT_FOUND', message: 'job not found' }
+    await withRetry(() => db.update(jobs).set({ status: 'queued', error: null }).where(eq(jobs.id, payload.jobId)).run())
+    enqueueJob(payload.jobId)
+    return { ok: true }
+  })
+
+  ipcMain.handle('result.listByImage', async (evt, payload: { imageId: string }) => {
+    if (!isTrustedSender(evt)) return { ok: false, code: 'E_FORBIDDEN', message: 'untrusted sender' }
+    if (!isString(payload?.imageId)) return { ok: false, code: 'E_VALIDATION', message: 'imageId required' }
     const rows = db.select({
       id: results.id,
       jobId: results.jobId,
@@ -106,7 +177,9 @@ export function registerIpcHandlers() {
     return rows
   })
 
-  ipcMain.handle('result.listByJob', async (_evt, payload: { jobId: string }) => {
+  ipcMain.handle('result.listByJob', async (evt, payload: { jobId: string }) => {
+    if (!isTrustedSender(evt)) return { ok: false, code: 'E_FORBIDDEN', message: 'untrusted sender' }
+    if (!isString(payload?.jobId)) return { ok: false, code: 'E_VALIDATION', message: 'jobId required' }
     const rows = db.select({
       id: results.id,
       jobId: results.jobId,
@@ -120,17 +193,22 @@ export function registerIpcHandlers() {
     return rows
   })
 
-  ipcMain.handle('job.listByImage', async (_evt, payload: { imageId: string }) => {
+  ipcMain.handle('job.listByImage', async (evt, payload: { imageId: string }) => {
+    if (!isTrustedSender(evt)) return { ok: false, code: 'E_FORBIDDEN', message: 'untrusted sender' }
+    if (!isString(payload?.imageId)) return { ok: false, code: 'E_VALIDATION', message: 'imageId required' }
     const rows = db.select().from(jobs).where(eq(jobs.sourceImageId, payload.imageId)).all()
     return rows
   })
 
-  ipcMain.handle('style.list', async () => {
+  ipcMain.handle('style.list', async (evt) => {
+    if (!isTrustedSender(evt)) return { ok: false, code: 'E_FORBIDDEN', message: 'untrusted sender' }
     const rows = db.select().from(styles).all()
     return rows
   })
 
-  ipcMain.handle('file.download', async (_evt, payload: { resultId: string; suggestedName?: string }) => {
+  ipcMain.handle('file.download', async (evt, payload: { resultId: string; suggestedName?: string }) => {
+    if (!isTrustedSender(evt)) return { canceled: true }
+    if (!isString(payload?.resultId)) return { error: 'E_VALIDATION' }
     // pick save path via dialog (scaffold)
     const { canceled, filePath } = await dialog.showSaveDialog({
       defaultPath: payload.suggestedName ?? 'output.png',
@@ -144,20 +222,34 @@ export function registerIpcHandlers() {
       .get()
     if (!row) return { error: 'NOT_FOUND' }
     const buf: Buffer = row.dataBlob as unknown as Buffer
-    writeFileSync(filePath, buf)
+    await withRetry(() => writeFileSync(filePath, buf))
     return { ok: true, filePath }
   })
 
-  ipcMain.handle('db.clear', async (_evt, payload: { confirmToken: string }) => {
+  ipcMain.handle('file.openDownloadsDir', async (evt) => {
+    if (!isTrustedSender(evt)) return { ok: false }
+    try {
+      const dir = app.getPath('downloads')
+      await shell.openPath(dir)
+      return { ok: true }
+    } catch (e) {
+      logger.error('openDownloadsDir failed', e)
+      return { ok: false }
+    }
+  })
+
+  ipcMain.handle('db.clear', async (evt, payload: { confirmToken: string }) => {
+    if (!isTrustedSender(evt)) return { ok: false, code: 'E_FORBIDDEN', message: 'untrusted sender' }
     if (!payload?.confirmToken || payload.confirmToken !== 'CONFIRM_CLEAR') {
       return { ok: false, code: 'E_VALIDATION', message: 'Invalid confirm token' }
     }
     try {
-      db.delete(results).run()
-      db.delete(jobs).run()
-      db.delete(images).run()
+      await withRetry(() => db.delete(results).run())
+      await withRetry(() => db.delete(jobs).run())
+      await withRetry(() => db.delete(images).run())
       return { ok: true }
     } catch (e) {
+      logger.error('db.clear failed', e)
       return { ok: false, code: 'E_IO', message: 'Failed to clear database' }
     }
   })

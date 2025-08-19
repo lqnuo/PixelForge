@@ -1,6 +1,6 @@
 import { getDb } from '../db'
 import { styles } from '../db/schema'
-import { count, eq } from 'drizzle-orm'
+import { count } from 'drizzle-orm'
 import { randomUUID } from 'crypto'
 
 const DEFAULT_STYLES = [
@@ -24,4 +24,3 @@ export function seedStyles(): void {
     }).run()
   }
 }
-

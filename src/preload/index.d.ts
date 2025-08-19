@@ -1,7 +1,10 @@
 export {}
 
+import type { ElectronAPI } from '@electron-toolkit/preload'
+
 declare global {
   interface Window {
+    electron: ElectronAPI
     api: {
       image: {
         upload: (items: Array<{
@@ -13,10 +16,12 @@ declare global {
           dataBase64: string
         }>) => Promise<Array<any>>
         list: () => Promise<Array<any>>
+        delete: (imageId: string) => Promise<{ ok: boolean; code?: string; message?: string }>
       }
       job: {
         create: (params: { imageId: string; styleId?: string | null; aspectRatio: string }) => Promise<any>
         listByImage: (imageId: string) => Promise<Array<any>>
+        retry: (jobId: string) => Promise<{ ok: boolean } | { ok: false; code: string; message: string }>
       }
       result: {
         listByImage: (imageId: string) => Promise<Array<any>>
@@ -27,6 +32,14 @@ declare global {
       }
       file: {
         download: (resultId: string, suggestedName?: string) => Promise<{ ok?: boolean; filePath?: string; canceled?: boolean; error?: string }>
+        openDownloadsDir: () => Promise<{ ok: boolean }>
+      }
+      db: {
+        clear: (confirmToken: string) => Promise<{ ok: boolean; code?: string; message?: string }>
+      }
+      events: {
+        onJobUpdated: (cb: (payload: any) => void) => () => void
+        onResultCreated: (cb: (payload: any) => void) => () => void
       }
     }
   }

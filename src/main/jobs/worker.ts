@@ -3,6 +3,8 @@ import { jobs, images, results } from '../db/schema'
 import { eq } from 'drizzle-orm'
 import { randomUUID } from 'crypto'
 import { BrowserWindow } from 'electron'
+import { logger } from '../utils/log'
+import { withRetry } from '../utils/retry'
 
 let running = false
 let queue: string[] = []
@@ -21,6 +23,7 @@ function broadcast(channel: string, payload: any) {
 
 export function enqueueJob(jobId: string) {
   queue.push(jobId)
+  logger.info('Job enqueued', { jobId })
   tick()
 }
 
@@ -35,10 +38,12 @@ function tick() {
   const next = queue.shift()
   if (!next) return
   active++
+  logger.info('Job started', { jobId: next })
   processJob(next)
     .catch(() => {})
     .finally(() => {
       active--
+      logger.info('Job finished', { jobId: next })
       setImmediate(tick)
     })
 }
@@ -46,20 +51,21 @@ function tick() {
 async function processJob(jobId: string) {
   const db = getDb()
   // mark processing
-  db.update(jobs).set({ status: 'processing' }).where(eq(jobs.id, jobId)).run()
+  await withRetry(() => db.update(jobs).set({ status: 'processing' }).where(eq(jobs.id, jobId)).run())
   broadcast('job.updated', { jobId, status: 'processing' })
   // load job and image
   const job = db.select().from(jobs).where(eq(jobs.id, jobId)).get()
   if (!job) return
   const img = db.select().from(images).where(eq(images.id, job.sourceImageId)).get()
   if (!img) {
-    db.update(jobs).set({ status: 'failed', error: 'SOURCE_IMAGE_NOT_FOUND' }).where(eq(jobs.id, jobId)).run()
+    await withRetry(() => db.update(jobs).set({ status: 'failed', error: 'SOURCE_IMAGE_NOT_FOUND' }).where(eq(jobs.id, jobId)).run())
+    logger.warn('Job failed: source image missing', { jobId })
     broadcast('job.updated', { jobId, status: 'failed', error: 'SOURCE_IMAGE_NOT_FOUND' })
     return
   }
   // Mock generation: copy the source buffer as result
   const rid = randomUUID()
-  db.insert(results).values({
+  await withRetry(() => db.insert(results).values({
     id: rid,
     jobId: jobId,
     sourceImageId: job.sourceImageId,
@@ -68,8 +74,8 @@ async function processJob(jobId: string) {
     height: img.height ?? null,
     dataBlob: img.dataBlob as unknown as Buffer,
     previewBase64: img.previewBase64 ?? null,
-  }).run()
+  }).run())
   broadcast('result.created', { id: rid, jobId, sourceImageId: job.sourceImageId })
-  db.update(jobs).set({ status: 'done', error: null }).where(eq(jobs.id, jobId)).run()
+  await withRetry(() => db.update(jobs).set({ status: 'done', error: null }).where(eq(jobs.id, jobId)).run())
   broadcast('job.updated', { jobId, status: 'done' })
 }
