@@ -45,7 +45,6 @@ function ensureSchema(sqlite: Database.Database) {
     created_at INTEGER NOT NULL DEFAULT (strftime('%s','now'))
   );
   CREATE UNIQUE INDEX IF NOT EXISTS idx_images_sha256 ON images(sha256);
-  CREATE INDEX IF NOT EXISTS idx_images_group_id ON images(group_id);
 
   CREATE TABLE IF NOT EXISTS styles (
     id TEXT PRIMARY KEY,
@@ -92,13 +91,15 @@ function ensureSchema(sqlite: Database.Database) {
   // Migration: add images.group_id if missing (for existing DBs)
   try {
     const col = sqlite
-      .prepare("SELECT 1 FROM pragma_table_info('images') WHERE name = 'group_id'")
-      .get()
+      .prepare("SELECT 1 as ok FROM pragma_table_info('images') WHERE name = 'group_id'")
+      .get() as any
     if (!col) {
       sqlite.prepare('ALTER TABLE images ADD COLUMN group_id TEXT').run()
-      // index may fail if already exists (ignore)
-      try { sqlite.prepare('CREATE INDEX IF NOT EXISTS idx_images_group_id ON images(group_id)').run() } catch {}
     }
+    // ensure index exists only after column exists
+    try {
+      sqlite.prepare('CREATE INDEX IF NOT EXISTS idx_images_group_id ON images(group_id)').run()
+    } catch {}
   } catch {
     // ignore
   }
