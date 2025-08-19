@@ -1,18 +1,24 @@
 <script setup lang="ts">
 import { onMounted, ref, computed, watch, nextTick } from 'vue'
-import { Search, Filter, Grid3X3, Grid, Upload, Trash2, Sparkles, Eye, Download, MoreVertical, X, Check, AlertCircle } from 'lucide-vue-next'
+import { Search, Filter, Grid3X3, Grid, Upload, Trash2, Sparkles, Eye, Download, MoreVertical, X, Check, AlertCircle, Pencil } from 'lucide-vue-next'
 import { DialogRoot, DialogTrigger, DialogPortal, DialogOverlay, DialogContent, DialogTitle, DialogDescription, DialogClose } from 'reka-ui'
 import Pagination from '@/components/ui/Pagination.vue'
 import { toastManager } from '@/composables/useToast'
-import type { ImageItem, StyleItem } from '@/types'
+import type { ImageItem, StyleItem, GroupItem } from '@/types'
 
 const bridge: any = (window as any)?.api
 
 // === 数据状态 ===
 const images = ref<ImageItem[]>([])
 const styles = ref<StyleItem[]>([])
+const groups = ref<GroupItem[]>([])
+const groupCounts = ref<Record<string, number>>({})
+const allCount = ref<number>(0)
+const UNASSIGNED = '__UNASSIGNED__'
 const selected = ref<Set<string>>(new Set())
 const selectedStyleId = ref<string | null>(null)
+const currentGroupId = ref<string | null>(null)
+const moveTargetGroupId = ref<string | null>(null)
 
 // === UI状态 ===
 const isGenerating = ref(false)
@@ -88,10 +94,50 @@ const pageItems = computed(() => {
   return filteredImages.value.slice(start, start + pageSize.value)
 })
 
+async function reloadGroups() {
+  if (!bridge) return
+  try {
+    if (bridge?.group?.list) {
+      groups.value = await bridge.group.list()
+    } else {
+      groups.value = []
+    }
+  } catch {
+    groups.value = []
+  }
+  await reloadGroupCounts()
+}
+
+async function reloadImages(gid: string | null | typeof UNASSIGNED) {
+  if (!bridge) return
+  try {
+    if (gid === UNASSIGNED) {
+      let all: ImageItem[] = []
+      try {
+        all = await bridge.image.list()
+      } catch {
+        all = await bridge.image.list({ groupId: null })
+      }
+      images.value = all.filter((it: any) => !it.groupId)
+    } else {
+      images.value = await bridge.image.list({ groupId: gid })
+    }
+  } catch (e) {
+    // fallback to legacy API without params if preload/main not updated together
+    images.value = await bridge.image.list()
+  }
+}
+
 onMounted(async () => {
   if (!bridge) return
-  images.value = await bridge.image.list()
+  await reloadGroups()
+  await reloadImages(currentGroupId.value)
   styles.value = await bridge.style.list()
+})
+
+watch(currentGroupId, async (gid) => {
+  await reloadImages((gid as any) ?? null)
+  selected.value.clear()
 })
 
 watch(confirmOpen, (open) => {
@@ -139,7 +185,8 @@ async function uploadFiles(files: File[]) {
     items.push({ filename: f.name, mimeType: f.type || 'image/png', sizeBytes: f.size, dataBase64: base64, previewBase64: preview })
   }
   await bridge.image.upload(items)
-  images.value = await bridge.image.list()
+  await reloadImages(currentGroupId.value)
+  await reloadGroupCounts()
 }
 
 async function generateSelected() {
@@ -159,7 +206,8 @@ async function deleteSelected() {
     await bridge.image.delete(id)
   }
   selected.value.clear()
-  images.value = await bridge.image.list()
+  await reloadImages(currentGroupId.value)
+  await reloadGroupCounts()
 }
 
 async function resizePreview(file: File, maxWidth: number): Promise<string> {
@@ -237,6 +285,99 @@ function formatDate(timestamp: number): string {
     minute: '2-digit'
   })
 }
+
+// === 分组相关 ===
+async function createGroup() {
+  const name = prompt('新建分组名称')?.trim()
+  if (!name) return
+  if (bridge?.group?.create) {
+    await bridge.group.create(name)
+    await reloadGroups()
+  }
+}
+
+async function moveSelectedToGroup() {
+  if (selected.value.size === 0) return
+  if (bridge?.image?.moveToGroup) {
+    await bridge.image.moveToGroup(Array.from(selected.value), moveTargetGroupId.value ?? null)
+  }
+  await reloadImages(currentGroupId.value)
+  await reloadGroupCounts()
+}
+
+async function reloadGroupCounts() {
+  if (!bridge) return
+  try {
+    let all: ImageItem[] = []
+    try {
+      all = await bridge.image.list()
+    } catch {
+      all = await bridge.image.list({ groupId: null })
+    }
+    const counts: Record<string, number> = {}
+    let total = 0
+    for (const it of all as ImageItem[]) {
+      total++
+      const gid = (it as any).groupId || null
+      const key = gid as unknown as string | null
+      const k = key === null ? 'null' : String(key)
+      counts[k] = (counts[k] || 0) + 1
+    }
+    groupCounts.value = counts
+    allCount.value = total
+  } catch {
+    groupCounts.value = {}
+    allCount.value = 0
+  }
+}
+
+async function renameGroup(g: GroupItem) {
+  const newName = prompt('重命名分组', g.name)?.trim()
+  if (!newName || newName === g.name) return
+  if (bridge?.group?.rename) {
+    await bridge.group.rename(g.id, newName)
+    await reloadGroups()
+  }
+}
+
+async function deleteGroup(g: GroupItem) {
+  if (!confirm(`确定删除分组 “${g.name}” ?\n组内图片将变为未分组。`)) return
+  if (bridge?.group?.delete) {
+    await bridge.group.delete(g.id)
+    if (currentGroupId.value === g.id) currentGroupId.value = null
+    await reloadGroups()
+    await reloadImages(currentGroupId.value)
+  }
+}
+
+// === 单项右键菜单 ===
+const ctxVisible = ref(false)
+const ctxX = ref(0)
+const ctxY = ref(0)
+const ctxImage = ref<ImageItem | null>(null)
+
+function openContextMenu(e: MouseEvent, item: ImageItem) {
+  e.preventDefault()
+  ctxVisible.value = true
+  ctxX.value = e.clientX
+  ctxY.value = e.clientY
+  ctxImage.value = item
+}
+
+function closeContextMenu() {
+  ctxVisible.value = false
+  ctxImage.value = null
+}
+
+async function moveSingleToGroup(groupId: string | null) {
+  if (!ctxImage.value) return
+  if (bridge?.image?.moveToGroup) {
+    await bridge.image.moveToGroup([ctxImage.value.id], groupId)
+  }
+  closeContextMenu()
+  await reloadImages(currentGroupId.value)
+  await reloadGroupCounts()
+}
 </script>
 
 <template>
@@ -259,72 +400,155 @@ function formatDate(timestamp: number): string {
       </div>
     </div>
 
-    <!-- === 现代化工具栏 === -->
-    <div class="toolbar-modern">
-      <div class="flex items-center gap-4">
-        <!-- 上传按钮 -->
-        <label class="cursor-pointer">
-          <div class="btn-primary flex items-center gap-2">
-            <Upload class="h-4 w-4" />
-            <span>上传素材</span>
+    <!-- === 左侧分组 + 右侧素材 === -->
+    <div class="flex-1 min-h-0 flex">
+      <!-- 左侧分组列表 -->
+      <aside class="w-64 shrink-0 border-r border-[hsl(var(--border))] p-1">
+        <div class="flex items-center justify-between mb-2">
+          <div class="text-sm font-medium">分组</div>
+          <button class="btn btn-outline" @click="createGroup">新建</button>
+        </div>
+        <ul class="space-y-1">
+          <li>
+            <div class="w-full nav-item-base group flex items-center justify-between">
+              <button
+                class="flex-1 text-left flex items-center gap-2"
+                :class="{ 'text-[hsl(var(--accent-foreground))]': currentGroupId === null }"
+                @click="currentGroupId = null"
+              >
+                <div class="h-2 w-2 rounded-full bg-[hsl(var(--primary))] opacity-60"></div>
+                <span>所有分组</span>
+              </button>
+              <span class="text-xs px-2 py-0.5 rounded bg-[hsl(var(--muted))] text-[hsl(var(--muted-foreground))]">
+                {{ allCount }}
+              </span>
+            </div>
+          </li>
+          <li>
+            <div class="w-full nav-item-base group flex items-center justify-between">
+              <button
+                class="flex-1 text-left flex items-center gap-2"
+                :class="{ 'text-[hsl(var(--accent-foreground))]': currentGroupId === UNASSIGNED }"
+                @click="currentGroupId = UNASSIGNED as any"
+              >
+                <div class="h-2 w-2 rounded-full bg-[hsl(var(--primary))] opacity-60"></div>
+                <span>未分组</span>
+              </button>
+              <span class="text-xs px-2 py-0.5 rounded bg-[hsl(var(--muted))] text-[hsl(var(--muted-foreground))]">
+                {{ groupCounts['null'] || 0 }}
+              </span>
+            </div>
+          </li>
+          <li v-for="g in groups" :key="g.id">
+            <div class="w-full nav-item-base group flex items-center justify-between">
+              <button
+                class="flex-1 text-left flex items-center gap-2"
+                :class="{ 'text-[hsl(var(--accent-foreground))]': currentGroupId === g.id }"
+                @click="currentGroupId = g.id"
+              >
+                <div class="h-2 w-2 rounded-full bg-[hsl(var(--primary))] opacity-60"></div>
+                <span class="truncate">{{ g.name }}</span>
+              </button>
+              <div class="flex items-center gap-2">
+                <span class="text-xs px-2 py-0.5 rounded bg-[hsl(var(--muted))] text-[hsl(var(--muted-foreground))]">
+                  {{ groupCounts[String(g.id)] || 0 }}
+                </span>
+                <button class="p-1 rounded hover:bg-[hsl(var(--muted))]" title="重命名" @click.stop="renameGroup(g)">
+                  <Pencil class="h-3 w-3" />
+                </button>
+                <button class="p-1 rounded hover:bg-[hsl(var(--muted))]" title="删除" @click.stop="deleteGroup(g)">
+                  <Trash2 class="h-3 w-3" />
+                </button>
+              </div>
+            </div>
+          </li>
+        </ul>
+      </aside>
+
+      <!-- 右侧素材区域 -->
+      <section class="flex-1 min-w-0 flex flex-col">
+        <!-- === 现代化工具栏 === -->
+        <div class="toolbar-modern">
+          <div class="flex items-center gap-4">
+            <!-- 上传按钮 -->
+            <label class="cursor-pointer">
+              <div class="btn-primary flex items-center gap-2">
+                <Upload class="h-4 w-4" />
+                <span>上传素材</span>
+              </div>
+              <input type="file" multiple accept="image/*" class="hidden" @change="onInputChange" />
+            </label>
+            
+            <!-- 批量操作 -->
+            <div v-if="selected.size > 0" class="flex items-center gap-2 animate-scale-in">
+              <div class="badge-info px-3 py-1">{{ selected.size }} 项已选</div>
+              <div class="flex items-center gap-2">
+                <select v-model="moveTargetGroupId" class="select-base min-w-[160px]">
+                  <option :value="null">移动到：无分组</option>
+                  <option v-for="g in groups" :key="g.id" :value="g.id">{{ g.name }}</option>
+                </select>
+                <button class="btn" @click="moveSelectedToGroup">确定</button>
+              </div>
+              <button class="btn-danger" @click="deleteSelected">
+                <Trash2 class="h-4 w-4" />
+                <span>删除所选</span>
+              </button>
+            </div>
           </div>
-          <input type="file" multiple accept="image/*" class="hidden" @change="onInputChange" />
-        </label>
-        
-        <!-- 批量操作 -->
-        <div v-if="selected.size > 0" class="flex items-center gap-2 animate-scale-in">
-          <div class="badge-info px-3 py-1">{{ selected.size }} 项已选</div>
-          <button class="btn-danger" @click="deleteSelected">
-            <Trash2 class="h-4 w-4" />
-            <span>删除所选</span>
-          </button>
+          
+          <div class="flex items-center gap-3">
+            <!-- 当前分组统计 -->
+            <div class="text-xs px-2 py-1 rounded bg-[hsl(var(--muted))] text-[hsl(var(--muted-foreground))]">
+              <span v-if="currentGroupId === null">所有分组: {{ allCount }}</span>
+              <span v-else-if="currentGroupId === (UNASSIGNED as any)">未分组: {{ groupCounts['null'] || 0 }}</span>
+              <span v-else>
+                {{ (groups.find(g=>g.id===currentGroupId) || {name:'分组'}).name }}:
+                {{ groupCounts[String(currentGroupId)] || 0 }}
+              </span>
+            </div>
+            <!-- 搜索框 -->
+            <div class="relative">
+              <Search class="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-[hsl(var(--muted-foreground))]" />
+              <input
+                v-model="searchQuery"
+                type="text"
+                placeholder="搜索素材..."
+                class="input-base pl-10 w-64"
+              />
+              <button
+                v-if="searchQuery"
+                @click="searchQuery = ''"
+                class="absolute right-2 top-1/2 -translate-y-1/2 p-1 hover:bg-[hsl(var(--muted))] rounded"
+              >
+                <X class="h-3 w-3" />
+              </button>
+            </div>
+            
+            <!-- 视图切换 -->
+            <div class="segmented">
+              <button
+                :class="['segmented-item', { 'data-[active=true]': viewMode === 'grid' }]"
+                @click="viewMode = 'grid'"
+              >
+                <Grid3X3 class="h-4 w-4" />
+              </button>
+              <button
+                :class="['segmented-item', { 'data-[active=true]': viewMode === 'list' }]"
+                @click="viewMode = 'list'"
+              >
+                <Grid class="h-4 w-4" />
+              </button>
+            </div>
+            
+            <!-- 高级筛选 -->
+            <button
+              :class="['btn-ghost', showFilters ? 'bg-[hsl(var(--accent))]' : '']"
+              @click="showFilters = !showFilters"
+            >
+              <Filter class="h-4 w-4" />
+            </button>
+          </div>
         </div>
-      </div>
-      
-      <div class="flex items-center gap-3">
-        <!-- 搜索框 -->
-        <div class="relative">
-          <Search class="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-[hsl(var(--muted-foreground))]" />
-          <input
-            v-model="searchQuery"
-            type="text"
-            placeholder="搜索素材..."
-            class="input-base pl-10 w-64"
-          />
-          <button
-            v-if="searchQuery"
-            @click="searchQuery = ''"
-            class="absolute right-2 top-1/2 -translate-y-1/2 p-1 hover:bg-[hsl(var(--muted))] rounded"
-          >
-            <X class="h-3 w-3" />
-          </button>
-        </div>
-        
-        <!-- 视图切换 -->
-        <div class="segmented">
-          <button
-            :class="['segmented-item', { 'data-[active=true]': viewMode === 'grid' }]"
-            @click="viewMode = 'grid'"
-          >
-            <Grid3X3 class="h-4 w-4" />
-          </button>
-          <button
-            :class="['segmented-item', { 'data-[active=true]': viewMode === 'list' }]"
-            @click="viewMode = 'list'"
-          >
-            <Grid class="h-4 w-4" />
-          </button>
-        </div>
-        
-        <!-- 高级筛选 -->
-        <button
-          :class="['btn-ghost', showFilters ? 'bg-[hsl(var(--accent))]' : '']"
-          @click="showFilters = !showFilters"
-        >
-          <Filter class="h-4 w-4" />
-        </button>
-      </div>
-    </div>
 
     <!-- === 高级筛选面板 === -->
     <div v-if="showFilters" class="glass-panel p-4 m-4 rounded-xl animate-slide-in-from-top">
@@ -476,6 +700,7 @@ function formatDate(timestamp: number): string {
           class="card-interactive group relative overflow-hidden animate-scale-in"
           :style="{ animationDelay: `${index * 50}ms` }"
           @click="previewImage = item; showPreview = true"
+          @contextmenu.prevent="openContextMenu($event, item)"
         >
           <!-- 选择框 -->
           <label class="absolute top-3 left-3 z-10 cursor-pointer" @click.stop>
@@ -572,6 +797,26 @@ function formatDate(timestamp: number): string {
         </div>
       </div>
     </Teleport>
+    <!-- 右键菜单 -->
+    <div v-if="ctxVisible" class="fixed inset-0 z-[9998]" @click="closeContextMenu"></div>
+    <div
+      v-if="ctxVisible && ctxImage"
+      class="fixed z-[9999] card-base p-2 min-w-[200px]"
+      :style="{ left: Math.min(ctxX, window.innerWidth - 220) + 'px', top: Math.min(ctxY, window.innerHeight - 200) + 'px' }"
+    >
+      <div class="text-xs text-[hsl(var(--muted-foreground))] px-2 py-1">移动到分组</div>
+      <button class="w-full text-left px-2 py-1 hover:bg-[hsl(var(--muted))] rounded" @click="moveSingleToGroup(null)">未分组</button>
+      <div class="max-h-60 overflow-auto">
+        <button
+          v-for="g in groups"
+          :key="g.id"
+          class="w-full text-left px-2 py-1 hover:bg-[hsl(var(--muted))] rounded"
+          @click="moveSingleToGroup(g.id)"
+        >{{ g.name }}</button>
+      </div>
+    </div>
+      </section>
+    </div>
   </div>
 </template>
 

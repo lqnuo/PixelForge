@@ -15,8 +15,11 @@ const api = {
         previewBase64?: string | null
       }>
     ) => ipcRenderer.invoke('image.upload', { items }),
-    list: () => ipcRenderer.invoke('image.list'),
+    list: (params?: { groupId?: string | null }) => ipcRenderer.invoke('image.list', params),
     delete: (imageId: string) => ipcRenderer.invoke('image.delete', { imageId })
+    ,
+    moveToGroup: (imageIds: string[], groupId?: string | null) =>
+      ipcRenderer.invoke('image.moveToGroup', { imageIds, groupId })
   },
   job: {
     create: (params: { imageId: string; styleId?: string | null; aspectRatio: string }) =>
@@ -34,6 +37,12 @@ const api = {
   },
   style: {
     list: () => ipcRenderer.invoke('style.list')
+  },
+  group: {
+    list: () => ipcRenderer.invoke('group.list'),
+    create: (name: string) => ipcRenderer.invoke('group.create', { name }),
+    rename: (id: string, name: string) => ipcRenderer.invoke('group.rename', { id, name }),
+    delete: (id: string) => ipcRenderer.invoke('group.delete', { id })
   },
   file: {
     download: (resultId: string, suggestedName?: string) =>

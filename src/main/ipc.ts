@@ -1,7 +1,7 @@
 import { ipcMain, dialog, IpcMainInvokeEvent, shell, app } from 'electron'
 import { randomUUID } from 'crypto'
 import { getDb } from './db'
-import { images, jobs, results, styles } from './db/schema'
+import { images, jobs, results, styles, groups } from './db/schema'
 import { sha256 } from './utils/crypto'
 import { eq, desc } from 'drizzle-orm'
 import { writeFileSync } from 'fs'
@@ -80,6 +80,7 @@ export function registerIpcHandlers() {
       height: r.height,
       sha256: r.sha256,
       previewBase64: r.previewBase64,
+      groupId: (r as any).groupId ?? null,
       createdAt: r.createdAt,
     }))
   })
@@ -101,7 +102,7 @@ export function registerIpcHandlers() {
     }
   })
 
-  ipcMain.handle('image.list', async (evt) => {
+  ipcMain.handle('image.list', async (evt, payload?: { groupId?: string | null }) => {
     if (!isTrustedSender(evt)) return { ok: false, code: 'E_FORBIDDEN', message: 'untrusted sender' }
     const rows = db.select({
       id: images.id,
@@ -112,9 +113,13 @@ export function registerIpcHandlers() {
       height: images.height,
       sha256: images.sha256,
       previewBase64: images.previewBase64,
+      groupId: images.groupId,
       createdAt: images.createdAt,
     }).from(images).orderBy(desc(images.createdAt)).all()
-    return rows
+    const gid = payload?.groupId
+    // filter by groupId if provided (null/undefined means all)
+    const filtered = gid === undefined || gid === null || gid === '' ? rows : rows.filter((r) => r.groupId === gid)
+    return filtered
   })
 
   ipcMain.handle('job.create', async (evt, payload: { imageId: string; styleId?: string | null; aspectRatio: string }) => {
@@ -270,6 +275,58 @@ export function registerIpcHandlers() {
     if (!isTrustedSender(evt)) return { ok: false, code: 'E_FORBIDDEN', message: 'untrusted sender' }
     const rows = db.select().from(styles).all()
     return rows
+  })
+
+  // === Groups & grouping ===
+  ipcMain.handle('image.moveToGroup', async (evt, payload: { imageIds: string[]; groupId?: string | null }) => {
+    if (!isTrustedSender(evt)) return { ok: false, code: 'E_FORBIDDEN', message: 'untrusted sender' }
+    const imageIds = Array.isArray(payload?.imageIds) ? payload!.imageIds : []
+    if (imageIds.length === 0) return { ok: false, code: 'E_VALIDATION', message: 'imageIds required' }
+    const gid = payload?.groupId ?? null
+    if (gid) {
+      const exist = db.select({ id: groups.id }).from(groups).where(eq(groups.id, gid)).get()
+      if (!exist) return { ok: false, code: 'E_NOT_FOUND', message: 'group not found' }
+    }
+    for (const id of imageIds) {
+      db.update(images).set({ groupId: gid }).where(eq(images.id, id)).run()
+    }
+    return { ok: true, count: imageIds.length }
+  })
+
+  ipcMain.handle('group.create', async (evt, payload: { name: string }) => {
+    if (!isTrustedSender(evt)) return { ok: false, code: 'E_FORBIDDEN', message: 'untrusted sender' }
+    const name = String(payload?.name || '').trim()
+    if (!name) return { ok: false, code: 'E_VALIDATION', message: 'name required' }
+    const id = randomUUID()
+    const row = { id, name }
+    await withRetry(() => db.insert(groups).values(row as any).run())
+    return row
+  })
+
+  ipcMain.handle('group.list', async (evt) => {
+    if (!isTrustedSender(evt)) return { ok: false, code: 'E_FORBIDDEN', message: 'untrusted sender' }
+    const rows = db.select().from(groups).all()
+    return rows
+  })
+
+  ipcMain.handle('group.rename', async (evt, payload: { id: string; name: string }) => {
+    if (!isTrustedSender(evt)) return { ok: false, code: 'E_FORBIDDEN', message: 'untrusted sender' }
+    const id = String(payload?.id || '')
+    const name = String(payload?.name || '').trim()
+    if (!id || !name) return { ok: false, code: 'E_VALIDATION', message: 'id and name required' }
+    const exist = db.select({ id: groups.id }).from(groups).where(eq(groups.id, id)).get()
+    if (!exist) return { ok: false, code: 'E_NOT_FOUND', message: 'group not found' }
+    db.update(groups).set({ name }).where(eq(groups.id, id)).run()
+    return { ok: true }
+  })
+
+  ipcMain.handle('group.delete', async (evt, payload: { id: string }) => {
+    if (!isTrustedSender(evt)) return { ok: false, code: 'E_FORBIDDEN', message: 'untrusted sender' }
+    const id = String(payload?.id || '')
+    if (!id) return { ok: false, code: 'E_VALIDATION', message: 'id required' }
+    db.update(images).set({ groupId: null }).where(eq(images.groupId, id)).run()
+    db.delete(groups).where(eq(groups.id, id)).run()
+    return { ok: true }
   })
 
   ipcMain.handle('file.download', async (evt, payload: { resultId: string; suggestedName?: string }) => {

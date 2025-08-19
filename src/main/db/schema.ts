@@ -11,6 +11,8 @@ export const images = sqliteTable('images', {
   sha256: text('sha256').notNull().unique(),
   dataBlob: blob('data_blob').notNull(),
   previewBase64: text('preview_base64'),
+  // 分组：可为空
+  groupId: text('group_id'),
   createdAt: integer('created_at').notNull().default(sql`(strftime('%s','now'))`),
 })
 
@@ -45,3 +47,8 @@ export const results = sqliteTable('results', {
   createdAt: integer('created_at').notNull().default(sql`(strftime('%s','now'))`),
 })
 
+export const groups = sqliteTable('groups', {
+  id: text('id').primaryKey(),
+  name: text('name').notNull(),
+  createdAt: integer('created_at').notNull().default(sql`(strftime('%s','now'))`),
+})

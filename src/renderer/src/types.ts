@@ -7,8 +7,10 @@ export type ImageItem = {
   height?: number | null
   sha256: string
   previewBase64?: string | null
+  groupId?: string | null
   createdAt: number
 }
 
 export type StyleItem = { id: string; name: string; description?: string | null }
 
+export type GroupItem = { id: string; name: string; createdAt?: number }

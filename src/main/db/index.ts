@@ -41,9 +41,11 @@ function ensureSchema(sqlite: Database.Database) {
     sha256 TEXT NOT NULL UNIQUE,
     data_blob BLOB NOT NULL,
     preview_base64 TEXT,
+    group_id TEXT,
     created_at INTEGER NOT NULL DEFAULT (strftime('%s','now'))
   );
   CREATE UNIQUE INDEX IF NOT EXISTS idx_images_sha256 ON images(sha256);
+  CREATE INDEX IF NOT EXISTS idx_images_group_id ON images(group_id);
 
   CREATE TABLE IF NOT EXISTS styles (
     id TEXT PRIMARY KEY,
@@ -78,6 +80,26 @@ function ensureSchema(sqlite: Database.Database) {
   );
   CREATE INDEX IF NOT EXISTS idx_results_source_image_id ON results(source_image_id);
   CREATE INDEX IF NOT EXISTS idx_results_job_id ON results(job_id);
+
+  CREATE TABLE IF NOT EXISTS groups (
+    id TEXT PRIMARY KEY,
+    name TEXT NOT NULL,
+    created_at INTEGER NOT NULL DEFAULT (strftime('%s','now'))
+  );
   `
   sqlite.exec(ddl)
+
+  // Migration: add images.group_id if missing (for existing DBs)
+  try {
+    const col = sqlite
+      .prepare("SELECT 1 FROM pragma_table_info('images') WHERE name = 'group_id'")
+      .get()
+    if (!col) {
+      sqlite.prepare('ALTER TABLE images ADD COLUMN group_id TEXT').run()
+      // index may fail if already exists (ignore)
+      try { sqlite.prepare('CREATE INDEX IF NOT EXISTS idx_images_group_id ON images(group_id)').run() } catch {}
+    }
+  } catch {
+    // ignore
+  }
 }
