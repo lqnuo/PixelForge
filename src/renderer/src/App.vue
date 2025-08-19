@@ -104,7 +104,7 @@ onMounted(() => {
         <template v-for="item in navItems" :key="item.id">
           <button
             :class="[
-              'nav-item-base group relative overflow-hidden',
+              'nav-item-base group relative overflow-hidden w-full',
               item.active ? 'nav-item-active' : ''
             ]"
             @click="switchTab(item.id as 'uploads' | 'jobs')"
