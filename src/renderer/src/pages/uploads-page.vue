@@ -1,24 +1,88 @@
 <script setup lang="ts">
-import { onMounted, ref, computed } from 'vue'
+import { onMounted, ref, computed, watch, nextTick } from 'vue'
+import { Search, Filter, Grid3X3, Grid, Upload, Trash2, Sparkles, Eye, Download, MoreVertical, X, Check, AlertCircle } from 'lucide-vue-next'
+import { toastManager } from '@/composables/useToast'
 import type { ImageItem, StyleItem } from '@/types'
 
 const bridge: any = (window as any)?.api
 
+// === 数据状态 ===
 const images = ref<ImageItem[]>([])
 const styles = ref<StyleItem[]>([])
 const selected = ref<Set<string>>(new Set())
-const page = ref(1)
-const pageSize = ref(20)
-const aspect = ref<'1:1' | '3:4'>('1:1')
 const selectedStyleId = ref<string | null>(null)
+
+// === UI状态 ===
 const isGenerating = ref(false)
 const isDragging = ref(false)
+const isUploading = ref(false)
+const uploadProgress = ref(0)
+const searchQuery = ref('')
+const sortBy = ref<'name' | 'date' | 'size'>('date')
+const sortOrder = ref<'asc' | 'desc'>('desc')
+const viewMode = ref<'grid' | 'list'>('grid')
+const aspect = ref<'1:1' | '3:4'>('1:1')
 
-const total = computed(() => images.value.length)
+// === 分页状态 ===
+const page = ref(1)
+const pageSize = ref(24)
+
+// === 高级筛选状态 ===
+const showFilters = ref(false)
+const filterMinSize = ref(0)
+const filterMaxSize = ref(0)
+const filterDateRange = ref<{ start: string, end: string }>({ start: '', end: '' })
+
+// === 预览状态 ===
+const previewImage = ref<ImageItem | null>(null)
+const showPreview = ref(false)
+
+// === 数据处理 ===
+const filteredImages = computed(() => {
+  let result = [...images.value]
+  
+  // 搜索过滤
+  if (searchQuery.value) {
+    const query = searchQuery.value.toLowerCase()
+    result = result.filter(img => 
+      img.filename?.toLowerCase().includes(query) ||
+      img.id.toLowerCase().includes(query)
+    )
+  }
+  
+  // 尺寸过滤
+  if (filterMinSize.value > 0) {
+    result = result.filter(img => img.sizeBytes >= filterMinSize.value * 1024)
+  }
+  if (filterMaxSize.value > 0) {
+    result = result.filter(img => img.sizeBytes <= filterMaxSize.value * 1024)
+  }
+  
+  // 排序
+  result.sort((a, b) => {
+    let comparison = 0
+    switch (sortBy.value) {
+      case 'name':
+        comparison = (a.filename || a.id).localeCompare(b.filename || b.id)
+        break
+      case 'date':
+        comparison = (a.createdAt || 0) - (b.createdAt || 0)
+        break
+      case 'size':
+        comparison = a.sizeBytes - b.sizeBytes
+        break
+    }
+    return sortOrder.value === 'desc' ? -comparison : comparison
+  })
+  
+  return result
+})
+
+const total = computed(() => filteredImages.value.length)
 const pageCount = computed(() => Math.max(1, Math.ceil(total.value / pageSize.value)))
 const pageItems = computed(() => {
   const start = (page.value - 1) * pageSize.value
-  return images.value.slice(start, start + pageSize.value)
+  return filteredImages.value.slice(start, start + pageSize.value)
 })
 
 onMounted(async () => {
@@ -124,69 +188,325 @@ function dataUrl(mime: string, base64?: string | null) {
   if (!base64) return ''
   return `data:${mime};base64,${base64}`
 }
+
+// === 辅助函数 ===
+function formatFileSize(bytes: number): string {
+  const units = ['B', 'KB', 'MB', 'GB']
+  let size = bytes
+  let unitIndex = 0
+  
+  while (size >= 1024 && unitIndex < units.length - 1) {
+    size /= 1024
+    unitIndex++
+  }
+  
+  return `${size.toFixed(unitIndex > 0 ? 1 : 0)} ${units[unitIndex]}`
+}
+
+function formatDate(timestamp: number): string {
+  return new Date(timestamp * 1000).toLocaleDateString('zh-CN', {
+    month: 'short',
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit'
+  })
+}
 </script>
 
 <template>
-  <div
-    class="h-full flex flex-col"
-    :class="{ 'bg-[hsl(var(--muted))] ring-2 ring-[hsl(var(--ring))]': isDragging }"
-    @dragover.prevent="isDragging = true"
-    @dragenter.prevent="isDragging = true"
-    @dragleave="isDragging = false"
-    @drop="onDropFiles"
-  >
-    <div class="toolbar grid grid-cols-2">
-      <div class="flex items-center gap-2">
+  <div class="h-full flex flex-col bg-[hsl(var(--background))] animate-fade-in">
+    <!-- === 智能拖拽上传区域 === -->
+    <div 
+      :class="[
+        'absolute inset-0 z-50 flex items-center justify-center transition-all duration-300',
+        isDragging ? 'opacity-100 visible' : 'opacity-0 invisible'
+      ]"
+      @dragover.prevent
+      @dragenter.prevent
+      @dragleave="isDragging = false"
+      @drop="onDropFiles"
+    >
+      <div class="dropzone-active p-12 rounded-2xl text-center max-w-md mx-auto">
+        <Upload class="h-16 w-16 mx-auto mb-4 text-[hsl(var(--primary))] animate-bounce-subtle" />
+        <h3 class="text-xl font-semibold mb-2 text-[hsl(var(--foreground))]">释放以上传文件</h3>
+        <p class="text-[hsl(var(--muted-foreground))]">支持 JPG、PNG、WebP 等格式</p>
+      </div>
+    </div>
+
+    <!-- === 现代化工具栏 === -->
+    <div class="toolbar-modern">
+      <div class="flex items-center gap-4">
+        <!-- 上传按钮 -->
         <label class="cursor-pointer">
-          <button class="btn btn-primary pointer-events-none">上传</button>
+          <div class="btn-primary flex items-center gap-2">
+            <Upload class="h-4 w-4" />
+            <span>上传素材</span>
+          </div>
           <input type="file" multiple accept="image/*" class="hidden" @change="onInputChange" />
         </label>
-        <button class="btn btn-outline" :disabled="selected.size===0" @click="deleteSelected">删除所选</button>
+        
+        <!-- 批量操作 -->
+        <div v-if="selected.size > 0" class="flex items-center gap-2 animate-scale-in">
+          <div class="badge-info px-3 py-1">{{ selected.size }} 项已选</div>
+          <button class="btn-danger" @click="deleteSelected">
+            <Trash2 class="h-4 w-4" />
+            <span>删除所选</span>
+          </button>
+        </div>
       </div>
-      <div class="flex items-center justify-end gap-2">
-        <select v-model="selectedStyleId" class="select min-w-36">
-          <option :value="null">选择风格…</option>
-          <option v-for="s in styles" :key="s.id" :value="s.id">{{ s.name }}</option>
-        </select>
-        <select v-model="aspect" class="select min-w-24">
-          <option value="1:1">1:1</option>
-          <option value="3:4">3:4</option>
-        </select>
-        <button class="btn btn-primary" :disabled="isGenerating || selected.size===0 || !selectedStyleId" @click="generateSelected">
-          <span v-if="isGenerating" class="inline-block h-3 w-3 mr-2 align-[-2px] border-2 border-current border-t-transparent rounded-full animate-spin"></span>
-          批量生成
+      
+      <div class="flex items-center gap-3">
+        <!-- 搜索框 -->
+        <div class="relative">
+          <Search class="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-[hsl(var(--muted-foreground))]" />
+          <input
+            v-model="searchQuery"
+            type="text"
+            placeholder="搜索素材..."
+            class="input-base pl-10 w-64"
+          />
+          <button
+            v-if="searchQuery"
+            @click="searchQuery = ''"
+            class="absolute right-2 top-1/2 -translate-y-1/2 p-1 hover:bg-[hsl(var(--muted))] rounded"
+          >
+            <X class="h-3 w-3" />
+          </button>
+        </div>
+        
+        <!-- 视图切换 -->
+        <div class="segmented">
+          <button
+            :class="['segmented-item', { 'data-[active=true]': viewMode === 'grid' }]"
+            @click="viewMode = 'grid'"
+          >
+            <Grid3X3 class="h-4 w-4" />
+          </button>
+          <button
+            :class="['segmented-item', { 'data-[active=true]': viewMode === 'list' }]"
+            @click="viewMode = 'list'"
+          >
+            <Grid class="h-4 w-4" />
+          </button>
+        </div>
+        
+        <!-- 高级筛选 -->
+        <button
+          :class="['btn-ghost', showFilters ? 'bg-[hsl(var(--accent))]' : '']"
+          @click="showFilters = !showFilters"
+        >
+          <Filter class="h-4 w-4" />
         </button>
       </div>
     </div>
 
-    <div class="p-3 border-b text-sm text-neutral-500 flex items-center justify-between bg-[hsl(var(--background))]">
-      <div>共 {{ total }} 项</div>
-      <div class="flex items-center gap-2">
-        <label class="flex items-center gap-1"><input type="checkbox" @change="(e:any)=>toggleAllOnPage(e.target.checked)" />本页全选</label>
-        <select v-model.number="pageSize" class="select">
-          <option :value="10">10/页</option>
-          <option :value="20">20/页</option>
-          <option :value="50">50/页</option>
-        </select>
-        <div class="flex items-center gap-1">
-          <button class="btn btn-outline !px-2" :disabled="page<=1" @click="page=Math.max(1,page-1)">上一页</button>
-          <span>第 {{ page }} / {{ pageCount }} 页</span>
-          <button class="btn btn-outline !px-2" :disabled="page>=pageCount" @click="page=Math.min(pageCount,page+1)">下一页</button>
+    <!-- === 高级筛选面板 === -->
+    <div v-if="showFilters" class="glass-panel p-4 m-4 rounded-xl animate-slide-in-from-top">
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div>
+          <label class="block text-sm font-medium mb-2">排序方式</label>
+          <select v-model="sortBy" class="select-base">
+            <option value="date">按日期</option>
+            <option value="name">按名称</option>
+            <option value="size">按大小</option>
+          </select>
+        </div>
+        <div>
+          <label class="block text-sm font-medium mb-2">排序顺序</label>
+          <select v-model="sortOrder" class="select-base">
+            <option value="desc">降序</option>
+            <option value="asc">升序</option>
+          </select>
+        </div>
+        <div>
+          <label class="block text-sm font-medium mb-2">每页显示</label>
+          <select v-model.number="pageSize" class="select-base">
+            <option :value="12">12项</option>
+            <option :value="24">24项</option>
+            <option :value="48">48项</option>
+          </select>
         </div>
       </div>
     </div>
 
-    <div class="p-3 flex-1 overflow-auto grid grid-cols-2 gap-3 lg:grid-cols-3 xl:grid-cols-4">
-      <label v-for="it in pageItems" :key="it.id" class="card cursor-pointer select-none hover:shadow transition-shadow">
-        <div class="flex items-center gap-2 mb-2">
-          <input type="checkbox" :checked="isChecked(it.id)" @change="(e:any)=>toggle(it.id,e.target.checked)" />
-          <div class="text-sm font-medium line-clamp-1">{{ it.filename || it.id }}</div>
+    <!-- === 生成配置区域 === -->
+    <div v-if="selected.size > 0" class="bg-gradient-to-r from-[hsl(var(--primary))]/5 to-[hsl(var(--accent))]/5 border-y border-[hsl(var(--border))] p-4 animate-slide-in-from-bottom">
+      <div class="flex items-center justify-between">
+        <div class="flex items-center gap-4">
+          <div class="flex items-center gap-2">
+            <Sparkles class="h-5 w-5 text-[hsl(var(--primary))]" />
+            <span class="font-medium">AI生成配置</span>
+          </div>
+          
+          <select v-model="selectedStyleId" class="select-base min-w-40">
+            <option :value="null">选择艺术风格</option>
+            <option v-for="s in styles" :key="s.id" :value="s.id">{{ s.name }}</option>
+          </select>
+          
+          <select v-model="aspect" class="select-base">
+            <option value="1:1">1:1 正方形</option>
+            <option value="3:4">3:4 竖版</option>
+          </select>
         </div>
-        <img :src="dataUrl(it.mimeType, it.previewBase64)" class="w-full aspect-square object-cover rounded-md" />
-        <div class="text-xs text-neutral-500 mt-2">{{ (it.sizeBytes/1024).toFixed(0) }} KB</div>
-      </label>
-      <div v-if="pageItems.length===0" class="text-sm text-neutral-500">暂无素材，请上传。</div>
+        
+        <button
+          class="btn-primary"
+          :disabled="isGenerating || !selectedStyleId"
+          @click="generateSelected"
+        >
+          <span v-if="isGenerating" class="spinner mr-2"></span>
+          <Sparkles v-else class="h-4 w-4" />
+          <span>{{ isGenerating ? '生成中...' : `生成 ${selected.size} 张图片` }}</span>
+        </button>
+      </div>
     </div>
+
+    <!-- === 状态栏 === -->
+    <div class="px-6 py-3 border-b border-[hsl(var(--border))] bg-[hsl(var(--muted))]/20 flex items-center justify-between text-sm">
+      <div class="flex items-center gap-4">
+        <span class="text-[hsl(var(--foreground))] font-medium">{{ total }} 个素材</span>
+        <span v-if="searchQuery" class="text-[hsl(var(--muted-foreground))]">搜索: "{{ searchQuery }}"</span>
+      </div>
+      
+      <div class="flex items-center gap-3">
+        <label class="flex items-center gap-2 cursor-pointer hover:text-[hsl(var(--foreground))] transition-colors">
+          <input type="checkbox" @change="(e:any)=>toggleAllOnPage(e.target.checked)" class="rounded" />
+          <span>本页全选</span>
+        </label>
+        
+        <div v-if="pageCount > 1" class="flex items-center gap-2">
+          <button class="btn-ghost px-2 py-1" :disabled="page<=1" @click="page=Math.max(1,page-1)">
+            ← 上一页
+          </button>
+          <span class="px-2 py-1 text-[hsl(var(--muted-foreground))]">{{ page }} / {{ pageCount }}</span>
+          <button class="btn-ghost px-2 py-1" :disabled="page>=pageCount" @click="page=Math.min(pageCount,page+1)">
+            下一页 →
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- === 素材网格 === -->
+    <div class="flex-1 overflow-auto">
+      <div 
+        v-if="viewMode === 'grid'"
+        class="grid-auto-fill p-6 animate-fade-in"
+        @dragover.prevent="isDragging = true"
+        @dragenter.prevent="isDragging = true"
+        @dragleave="isDragging = false"
+      >
+        <!-- 空状态 -->
+        <div v-if="pageItems.length === 0 && !searchQuery" class="col-span-full flex flex-col items-center justify-center py-16 text-center">
+          <div class="dropzone-idle p-12 max-w-md mx-auto">
+            <Upload class="h-16 w-16 mx-auto mb-4 text-[hsl(var(--muted-foreground))]" />
+            <h3 class="text-lg font-semibold mb-2">开始上传素材</h3>
+            <p class="text-[hsl(var(--muted-foreground))] mb-6">拖拽图片到此处，或点击上传按钮选择文件</p>
+            <label class="btn-primary cursor-pointer">
+              <Upload class="h-4 w-4" />
+              选择文件
+              <input type="file" multiple accept="image/*" class="hidden" @change="onInputChange" />
+            </label>
+          </div>
+        </div>
+        
+        <!-- 搜索无结果 -->
+        <div v-else-if="pageItems.length === 0 && searchQuery" class="col-span-full flex flex-col items-center justify-center py-16 text-center">
+          <AlertCircle class="h-16 w-16 mb-4 text-[hsl(var(--muted-foreground))]" />
+          <h3 class="text-lg font-semibold mb-2">未找到匹配的素材</h3>
+          <p class="text-[hsl(var(--muted-foreground))]">尝试修改搜索关键词或清除筛选条件</p>
+        </div>
+        
+        <!-- 图片卡片 -->
+        <div
+          v-for="(item, index) in pageItems"
+          :key="item.id"
+          class="card-interactive group relative overflow-hidden animate-scale-in"
+          :style="{ animationDelay: `${index * 50}ms` }"
+          @click="previewImage = item; showPreview = true"
+        >
+          <!-- 选择框 -->
+          <label class="absolute top-3 left-3 z-10 cursor-pointer" @click.stop>
+            <input
+              type="checkbox"
+              :checked="isChecked(item.id)"
+              @change="(e:any)=>toggle(item.id,e.target.checked)"
+              class="w-5 h-5 rounded border-2 border-white/50 bg-white/10 backdrop-blur-sm"
+            />
+          </label>
+          
+          <!-- 快捷操作 -->
+          <div class="absolute top-3 right-3 flex gap-1 opacity-0 group-hover:opacity-100 transition-all duration-200">
+            <button class="p-2 bg-black/20 backdrop-blur-sm rounded-lg text-white hover:bg-black/30" title="预览">
+              <Eye class="h-4 w-4" />
+            </button>
+            <button class="p-2 bg-black/20 backdrop-blur-sm rounded-lg text-white hover:bg-black/30" title="下载">
+              <Download class="h-4 w-4" />
+            </button>
+            <button class="p-2 bg-black/20 backdrop-blur-sm rounded-lg text-white hover:bg-black/30" title="更多">
+              <MoreVertical class="h-4 w-4" />
+            </button>
+          </div>
+          
+          <!-- 图片 -->
+          <div class="aspect-square overflow-hidden rounded-t-xl">
+            <img
+              :src="dataUrl(item.mimeType, item.previewBase64)"
+              :alt="item.filename || item.id"
+              class="w-full h-full object-cover transition-transform duration-300 group-hover:scale-110"
+              loading="lazy"
+            />
+          </div>
+          
+          <!-- 信息区域 -->
+          <div class="p-4">
+            <h3 class="font-medium text-sm text-[hsl(var(--foreground))] truncate mb-1">
+              {{ item.filename || item.id }}
+            </h3>
+            <div class="flex items-center justify-between text-xs text-[hsl(var(--muted-foreground))]">
+              <span>{{ formatFileSize(item.sizeBytes) }}</span>
+              <span v-if="item.createdAt">{{ formatDate(item.createdAt) }}</span>
+            </div>
+          </div>
+          
+          <!-- 加载状态指示器 -->
+          <div v-if="!item.previewBase64" class="absolute inset-0 flex items-center justify-center bg-[hsl(var(--muted))]/50">
+            <div class="spinner h-6 w-6"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- === 图片预览模态框 === -->
+    <Teleport to="body">
+      <div
+        v-if="showPreview && previewImage"
+        class="fixed inset-0 z-[9999] flex items-center justify-center bg-black/80 backdrop-blur-sm animate-fade-in"
+        @click="showPreview = false"
+      >
+        <div class="relative max-w-4xl max-h-[90vh] m-4" @click.stop>
+          <img
+            :src="dataUrl(previewImage.mimeType, previewImage.previewBase64)"
+            :alt="previewImage.filename || previewImage.id"
+            class="max-w-full max-h-full rounded-xl shadow-dramatic"
+          />
+          <button
+            @click="showPreview = false"
+            class="absolute -top-4 -right-4 p-2 bg-white/10 backdrop-blur-sm rounded-full text-white hover:bg-white/20 transition-colors"
+          >
+            <X class="h-6 w-6" />
+          </button>
+          
+          <!-- 图片信息 -->
+          <div class="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-6 rounded-b-xl text-white">
+            <h3 class="font-semibold text-lg mb-2">{{ previewImage.filename || previewImage.id }}</h3>
+            <div class="flex items-center gap-4 text-sm text-white/80">
+              <span>{{ formatFileSize(previewImage.sizeBytes) }}</span>
+              <span v-if="previewImage.createdAt">{{ formatDate(previewImage.createdAt) }}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </Teleport>
   </div>
 </template>
 
