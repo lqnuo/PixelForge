@@ -194,7 +194,16 @@ async function uploadFiles(files: File[]) {
     const preview = await resizePreview(f, 320)
     items.push({ filename: f.name, mimeType: f.type || 'image/png', sizeBytes: f.size, dataBase64: base64, previewBase64: preview })
   }
-  await bridge.image.upload(items)
+  const inserted = await bridge.image.upload(items)
+  // 若当前选择了某个分组（非“未分组/所有分组”），将新上传的图片归入该分组
+  if (currentGroupId.value && (currentGroupId.value as any) !== UNASSIGNED) {
+    try {
+      const ids = Array.isArray(inserted) ? inserted.map((r:any) => r.id) : []
+      if (ids.length && bridge?.image?.moveToGroup) {
+        await bridge.image.moveToGroup(ids, currentGroupId.value)
+      }
+    } catch {}
+  }
   await reloadImages(currentGroupId.value)
   await reloadGroupCounts()
 }
@@ -451,10 +460,14 @@ async function moveSingleToGroup(groupId: string | null) {
         </div>
         <ul class="space-y-1">
           <li>
-            <div class="w-full nav-item-base group flex items-center justify-between">
+            <div
+              :class="[
+                'w-full group flex items-center justify-between',
+                currentGroupId === null ? 'nav-item-active' : 'nav-item-base'
+              ]"
+            >
               <button
                 class="flex-1 text-left flex items-center gap-2"
-                :class="{ 'text-[hsl(var(--accent-foreground))]': currentGroupId === null }"
                 @click="currentGroupId = null"
               >
                 <div class="h-2 w-2 rounded-full bg-[hsl(var(--primary))] opacity-60"></div>
@@ -465,11 +478,51 @@ async function moveSingleToGroup(groupId: string | null) {
               </span>
             </div>
           </li>
-          <li>
-            <div class="w-full nav-item-base group flex items-center justify-between">
+          <li v-for="g in groups" :key="g.id">
+            <div
+              :class="[
+                'w-full group flex items-center justify-between',
+                currentGroupId === g.id ? 'nav-item-active' : 'nav-item-base'
+              ]"
+            >
               <button
                 class="flex-1 text-left flex items-center gap-2"
-                :class="{ 'text-[hsl(var(--accent-foreground))]': currentGroupId === UNASSIGNED }"
+                @click="currentGroupId = g.id"
+              >
+                <div class="h-2 w-2 rounded-full bg-[hsl(var(--primary))] opacity-60"></div>
+                <span class="truncate">{{ g.name }}</span>
+              </button>
+              <div class="flex items-center gap-1.5">
+                <span class="text-xs px-2 py-0.5 rounded bg-[hsl(var(--muted))] text-[hsl(var(--muted-foreground))]">
+                  {{ groupCounts[String(g.id)] || 0 }}
+                </span>
+                <button
+                  class="inline-flex items-center justify-center h-6 w-6 rounded-md hover:bg-[hsl(var(--muted))] p-0 opacity-70 hover:opacity-100"
+                  title="重命名"
+                  @click.stop="openRenameGroup(g)"
+                >
+                  <Pencil class="h-3.5 w-3.5" />
+                </button>
+                <button
+                  class="inline-flex items-center justify-center h-6 w-6 rounded-md hover:bg-[hsl(var(--muted))] p-0 opacity-70 hover:opacity-100"
+                  title="删除"
+                  @click.stop="openDeleteGroup(g)"
+                >
+                  <Trash2 class="h-3.5 w-3.5" />
+                </button>
+              </div>
+            </div>
+          </li>
+          <!-- 未分组：放到最下面 -->
+          <li>
+            <div
+              :class="[
+                'w-full group flex items-center justify-between',
+                currentGroupId === UNASSIGNED ? 'nav-item-active' : 'nav-item-base'
+              ]"
+            >
+              <button
+                class="flex-1 text-left flex items-center gap-2"
                 @click="currentGroupId = UNASSIGNED as any"
               >
                 <div class="h-2 w-2 rounded-full bg-[hsl(var(--primary))] opacity-60"></div>
@@ -478,29 +531,6 @@ async function moveSingleToGroup(groupId: string | null) {
               <span class="text-xs px-2 py-0.5 rounded bg-[hsl(var(--muted))] text-[hsl(var(--muted-foreground))]">
                 {{ groupCounts['null'] || 0 }}
               </span>
-            </div>
-          </li>
-          <li v-for="g in groups" :key="g.id">
-            <div class="w-full nav-item-base group flex items-center justify-between">
-              <button
-                class="flex-1 text-left flex items-center gap-2"
-                :class="{ 'text-[hsl(var(--accent-foreground))]': currentGroupId === g.id }"
-                @click="currentGroupId = g.id"
-              >
-                <div class="h-2 w-2 rounded-full bg-[hsl(var(--primary))] opacity-60"></div>
-                <span class="truncate">{{ g.name }}</span>
-              </button>
-              <div class="flex items-center gap-2">
-                <span class="text-xs px-2 py-0.5 rounded bg-[hsl(var(--muted))] text-[hsl(var(--muted-foreground))]">
-                  {{ groupCounts[String(g.id)] || 0 }}
-                </span>
-                <button class="p-1 rounded hover:bg-[hsl(var(--muted))]" title="重命名" @click.stop="openRenameGroup(g)">
-                  <Pencil class="h-3 w-3" />
-                </button>
-                <button class="p-1 rounded hover:bg-[hsl(var(--muted))]" title="删除" @click.stop="openDeleteGroup(g)">
-                  <Trash2 class="h-3 w-3" />
-                </button>
-              </div>
             </div>
           </li>
         </ul>
