@@ -80,7 +80,7 @@ onMounted(() => {
     <!-- === 现代化侧边栏 === -->
     <aside class="w-72 bg-[hsl(var(--card))] border-r border-[hsl(var(--border))] flex flex-col shadow-elegant backdrop-blur-xl">
       <!-- 品牌区域 -->
-      <div class="p-6 border-b border-[hsl(var(--border))]">
+      <div class="p-4 border-b border-[hsl(var(--border))]">
         <div class="flex items-center gap-3">
           <div class="h-10 w-10 rounded-xl bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center shadow-floating">
             <span class="text-white font-bold text-lg">Q</span>
@@ -97,7 +97,7 @@ onMounted(() => {
       </div>
 
       <!-- 导航菜单 -->
-      <nav class="flex-1 p-4 space-y-2">
+      <nav class="flex-1 p-1 space-y-2">
         <div class="text-xs font-semibold text-[hsl(var(--muted-foreground))] uppercase tracking-wider mb-4">
           工作区
         </div>
@@ -124,7 +124,7 @@ onMounted(() => {
       </nav>
 
       <!-- 用户区域和设置 -->
-      <div class="p-4 border-t border-[hsl(var(--border))] space-y-3">
+      <div class="p-1 border-t border-[hsl(var(--border))] space-y-3">
         <!-- 主题切换 -->
         <button
           @click="toggleTheme"
@@ -139,13 +139,13 @@ onMounted(() => {
         </button>
         
         <!-- 用户信息 -->
-        <div class="flex items-center gap-3 p-3 rounded-lg bg-[hsl(var(--muted))]/50">
+        <div class="flex items-center gap-3 p-3 h-16 rounded-lg bg-[hsl(var(--muted))]/30">
           <div class="h-8 w-8 rounded-full bg-gradient-to-br from-green-400 to-blue-500 flex items-center justify-center">
             <User class="h-4 w-4 text-white" />
           </div>
           <div class="flex-1 min-w-0">
             <div class="font-medium text-sm text-[hsl(var(--foreground))] truncate">管理员</div>
-            <div class="text-xs text-[hsl(var(--muted-foreground))]">v1.0.0</div>
+            <div class="text-xs text-[hsl(var(--muted-foreground))] opacity-80">v1.0.0</div>
           </div>
         </div>
       </div>

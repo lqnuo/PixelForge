@@ -396,11 +396,13 @@ function formatDate(timestamp: number): string {
         @dragleave="isDragging = false"
       >
         <!-- 空状态 -->
-        <div v-if="pageItems.length === 0 && !searchQuery" class="col-span-full flex flex-col items-center justify-center py-16 text-center">
-          <div class="dropzone-idle p-12 max-w-md mx-auto">
-            <Upload class="h-16 w-16 mx-auto mb-4 text-[hsl(var(--muted-foreground))]" />
-            <h3 class="text-lg font-semibold mb-2">开始上传素材</h3>
-            <p class="text-[hsl(var(--muted-foreground))] mb-6">拖拽图片到此处，或点击上传按钮选择文件</p>
+        <div v-if="pageItems.length === 0 && !searchQuery" class="col-span-full flex flex-col items-center justify-center py-12 text-center">
+          <div class="dropzone-idle p-10 max-w-lg mx-auto">
+            <Upload class="h-16 w-16 mx-auto mb-6 text-[hsl(var(--muted-foreground))]" />
+            <h3 class="text-xl font-semibold mb-4 text-[hsl(var(--foreground))]">开始上传素材</h3>
+            <p class="text-[hsl(var(--muted-foreground))] mb-6 leading-relaxed">
+              拖拽图片到此处，或点击按钮选择文件
+            </p>
             <label class="btn-primary cursor-pointer">
               <Upload class="h-4 w-4" />
               选择文件
