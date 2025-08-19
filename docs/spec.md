@@ -122,6 +122,8 @@ API 集成：调用阿里云通义千问图像编辑 API。
 
 数据库：PostgreSQL / MongoDB (存储项目信息、用户信息、任务状态等)
 
+实现说明：当前代码基于 Vue 3 + Vite，样式使用 UnoCSS（presetWind + directives/variant-group），部分组件计划集成 shadcn‑vue。
+
 4. 商业模式 (Monetization)
 免费试用套餐：新用户注册后可获得一定数量的免费生成额度（例如 20 张），图片可能带有轻微水印。
 

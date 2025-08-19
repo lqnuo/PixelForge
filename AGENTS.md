@@ -3,8 +3,8 @@
 ## Project Structure & Module Organization
 - `src/main`: Electron main process (DB, IPC, jobs). Key files: `index.ts`, `ipc.ts`, `db/`, `jobs/`, `styles/`.
 - `src/preload`: Safe bridge exposed via `contextBridge` (`window.api.*`). Do not import `electron` in the renderer.
-- `src/renderer`: React + TypeScript UI with Tailwind (`src/renderer/src/**`). Entry: `index.html`, `src/main.tsx`, `src/App.tsx`.
-- Config: `electron.vite.config.ts`, `electron-builder.yml`, `eslint.config.mjs`, `tailwind.config.js`, `postcss.config.js`, `tsconfig*.json`.
+- `src/renderer`: Vue 3 + TypeScript UI with UnoCSS (`src/renderer/src/**`). Entry: `index.html`, `src/main.ts`, `src/App.vue`.
+- Config: `electron.vite.config.ts` (Vite + UnoCSS), `electron-builder.yml`, `eslint.config.mjs`, `postcss.config.js`, `tsconfig*.json`.
 - Assets: `resources/` (icons), `build/` (packaging resources), `docs/` (product specs, TODOs).
 
 ## Build, Test, and Development Commands
@@ -22,7 +22,7 @@
 - Linting: ESLint (Electron Toolkit + React, Hooks, Refresh). Fix issues before PRs.
 - TypeScript: prefer explicit types at module boundaries. `.ts` for main/preload, `.tsx` for React.
 - Naming: PascalCase React components, camelCase variables/functions, kebab-case file/dir names.
-- CSS: Tailwind in renderer; keep utilities in `globals.css` and component‑scoped classes in components.
+- CSS: UnoCSS in renderer (presetWind + transformers); keep custom utilities in `globals.css` and component‑scoped classes in components.
 
 ## Testing Guidelines
 - No unit test runner yet. Use `pnpm typecheck` and `pnpm lint` as gates.

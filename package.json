@@ -47,8 +47,7 @@
     "postcss": "^8.4.41",
     "prettier": "^3.6.2",
     "shadcn-vue": "latest",
-    "tailwindcss": "latest",
-    "tailwindcss-animate": "^1.0.7",
+    "unocss": "latest",
     "typescript": "^5.8.3",
     "vite": "latest"
   },

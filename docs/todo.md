@@ -41,7 +41,7 @@ MVP TODO（依据 docs/spec-mvp.md）
   - [x] 已实现：`job.updated` / `result.created` 事件；渲染进程自动刷新
 
 五、渲染进程 UI（Vue 3 + shadcn-vue）
-- [x] Tailwind 配置与全局样式
+- [x] UnoCSS 配置与全局样式（Vite 插件 + presetWind + directives）
 - [x] 三栏布局：左（待处理列表+上传区）、中（配置区）、右（结果预览区）
 - [x] 上传区（点选上传，多选）
 - [x] 左侧：缩略图列表（使用 `preview_base64`）与选中态
@@ -55,7 +55,7 @@ MVP TODO（依据 docs/spec-mvp.md）
   - [x] 安装依赖并用 CLI 生成（需联网）
 
 六、样式与体验
-- [x] 主题与基础色、统一按钮/卡片组件（Tailwind v4）
+- [x] 主题与基础色、统一按钮/卡片组件（UnoCSS + presetWind）
 - [x] 拖拽高亮、禁用态/加载态、错误态（基础）
 - [x] 快捷键（可选）
   - [x] 重新生成（R / Enter）
