@@ -1,7 +1,7 @@
 MVP TODO（依据 docs/spec-mvp.md）
 
 一、项目与基础设施
-- [x] 初始化 Electron + React + Vite + TypeScript 脚手架
+- [x] 初始化 Electron + Vue 3 + Vite + TypeScript 脚手架
 - [x] 配置 `electron-builder` 打包（macOS，启用 `asar`）
 - [x] 配置 ESLint / Prettier / tsconfig
 - [x] 定义应用路径（`app.getPath('userData')`）
@@ -40,7 +40,7 @@ MVP TODO（依据 docs/spec-mvp.md）
 - [x] 进度/完成事件通过 IPC 通知渲染进程
   - [x] 已实现：`job.updated` / `result.created` 事件；渲染进程自动刷新
 
-五、渲染进程 UI（React + shadcn/ui）
+五、渲染进程 UI（Vue 3 + shadcn-vue）
 - [x] Tailwind 配置与全局样式
 - [x] 三栏布局：左（待处理列表+上传区）、中（配置区）、右（结果预览区）
 - [x] 上传区（点选上传，多选）
@@ -50,12 +50,12 @@ MVP TODO（依据 docs/spec-mvp.md）
 - [ ] 空状态、错误提示与重试按钮
   - [x] 空状态（无图片/无结果）
   - [x] 错误提示与重试按钮（处理失败的 Job）
-- [ ] 集成 shadcn/ui 组件库（安装依赖与生成组件）
-  - [x] Button/Card 组件替换（本地实现，无外部依赖）
+- [ ] 集成 shadcn-vue 组件库（安装依赖与生成组件）
+  - [x] Button/Card 基础样式占位（本地实现，无外部依赖）
   - [x] 安装依赖并用 CLI 生成（需联网）
 
 六、样式与体验
-- [x] 主题与基础色、统一按钮/卡片组件
+- [x] 主题与基础色、统一按钮/卡片组件（Tailwind v4）
 - [x] 拖拽高亮、禁用态/加载态、错误态（基础）
 - [x] 快捷键（可选）
   - [x] 重新生成（R / Enter）

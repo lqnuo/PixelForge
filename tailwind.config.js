@@ -3,7 +3,7 @@ import animate from 'tailwindcss-animate'
 
 export default {
   darkMode: ['class'],
-  content: ['./index.html', './src/renderer/src/**/*.{ts,tsx,js,jsx,html}'],
+  content: ['./index.html', './src/renderer/src/**/*.{ts,tsx,js,jsx,vue,html}'],
   theme: {
     container: {
       center: true,

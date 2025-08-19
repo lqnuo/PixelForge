@@ -71,15 +71,17 @@
 
 单张下载：每张效果图下方提供一个“下载”按钮。
 
-4. 技术方案（Electron + React + Drizzle）
+4. 技术方案（Electron + Vue 3 + Drizzle）
 
 - 技术栈：
   - Electron（主进程负责本地数据库、文件/系统能力、任务调度；渲染进程负责 UI）
-  - React 18 + Vite + TypeScript（前端渲染层）
+  - Vue 3（`<script setup>`）+ Vite + TypeScript（前端渲染层）
+  - shadcn‑vue（按需引入组件，Tailwind v4 设计令牌）
+  - lucide-vue-next（图标库）
   - Drizzle ORM + SQLite（本地持久化，驱动建议使用 better-sqlite3）
 - 程序结构：
   - 主进程：初始化数据库、暴露受控的 IPC 服务（如 `image.upload`、`job.create`、`result.list`）、负责生成任务调度与状态更新。
-  - 渲染进程（React）：上传图片、选择风格与参数、触发生成、展示结果；仅通过 IPC 调用主进程的数据与任务接口。
+  - 渲染进程（Vue）：上传图片、选择风格与参数、触发生成、展示结果；仅通过 IPC 调用主进程的数据与任务接口。
 - 数据持久化：
   - SQLite 库文件放置在 `app.getPath('userData')/app.db`。
   - 按需使用 Drizzle 的迁移（drizzle-kit）管理表结构演进。
@@ -88,6 +90,8 @@
   - BLOB 无额外编码膨胀，读写更快；MVP 限制每次最多 10 张、单图不超过 5MB（原图）。
   - 提供“清空数据”功能和“批量删除结果”以释放磁盘空间。
   - 如后续需要处理大批量与大图，建议改为“磁盘存文件 + DB 存路径/元数据”的混合方案（非本次 MVP 范围）。
+- 样式系统：
+  - Tailwind CSS v4，已在 Vite 中配置；后续通过 shadcn‑vue 生成/引入组件。
 - 打包与更新：
   - 首版可仅支持 macOS；使用 electron-builder 出包，开启 `asar`。
 
