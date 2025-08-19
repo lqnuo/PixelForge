@@ -20,6 +20,15 @@ const selectedStyleId = ref<string | null>(null)
 const currentGroupId = ref<string | null>(null)
 const moveTargetGroupId = ref<string | null>(null)
 
+// 分组对话框状态
+const createOpen = ref(false)
+const createName = ref('')
+const renameOpen = ref(false)
+const renameTarget = ref<GroupItem | null>(null)
+const renameName = ref('')
+const deleteOpen = ref(false)
+const deleteTarget = ref<GroupItem | null>(null)
+
 // === UI状态 ===
 const isGenerating = ref(false)
 const isDragging = ref(false)
@@ -31,6 +40,7 @@ const sortOrder = ref<'asc' | 'desc'>('desc')
 const viewMode = ref<'grid' | 'list'>('grid')
 const aspect = ref<'1:1' | '3:4'>('1:1')
 const confirmOpen = ref(false)
+const bulkDeleteOpen = ref(false)
 
 // === 分页状态 ===
 const page = ref(1)
@@ -199,15 +209,18 @@ async function generateSelected() {
   confirmOpen.value = false
 }
 
-async function deleteSelected() {
-  if (selected.value.size === 0) return
-  if (!confirm(`确定删除选中的 ${selected.value.size} 张图片及其关联任务与结果？`)) return
+async function submitBulkDelete() {
+  if (selected.value.size === 0) {
+    bulkDeleteOpen.value = false
+    return
+  }
   for (const id of Array.from(selected.value)) {
     await bridge.image.delete(id)
   }
   selected.value.clear()
   await reloadImages(currentGroupId.value)
   await reloadGroupCounts()
+  bulkDeleteOpen.value = false
 }
 
 async function resizePreview(file: File, maxWidth: number): Promise<string> {
@@ -287,13 +300,20 @@ function formatDate(timestamp: number): string {
 }
 
 // === 分组相关 ===
-async function createGroup() {
-  const name = prompt('新建分组名称')?.trim()
+function openCreateGroup() {
+  createName.value = ''
+  createOpen.value = true
+}
+
+async function submitCreateGroup() {
+  const name = createName.value.trim()
   if (!name) return
   if (bridge?.group?.create) {
-    await bridge.group.create(name)
+    const row = await bridge.group.create(name)
     await reloadGroups()
+    if (row?.id) currentGroupId.value = row.id
   }
+  createOpen.value = false
 }
 
 async function moveSelectedToGroup() {
@@ -331,23 +351,44 @@ async function reloadGroupCounts() {
   }
 }
 
-async function renameGroup(g: GroupItem) {
-  const newName = prompt('重命名分组', g.name)?.trim()
-  if (!newName || newName === g.name) return
+function openRenameGroup(g: GroupItem) {
+  renameTarget.value = g
+  renameName.value = g.name
+  renameOpen.value = true
+}
+
+async function submitRenameGroup() {
+  const g = renameTarget.value
+  const newName = renameName.value.trim()
+  if (!g || !newName || newName === g.name) {
+    renameOpen.value = false
+    return
+  }
   if (bridge?.group?.rename) {
     await bridge.group.rename(g.id, newName)
     await reloadGroups()
   }
+  renameOpen.value = false
 }
 
-async function deleteGroup(g: GroupItem) {
-  if (!confirm(`确定删除分组 “${g.name}” ?\n组内图片将变为未分组。`)) return
+function openDeleteGroup(g: GroupItem) {
+  deleteTarget.value = g
+  deleteOpen.value = true
+}
+
+async function submitDeleteGroup() {
+  const g = deleteTarget.value
+  if (!g) {
+    deleteOpen.value = false
+    return
+  }
   if (bridge?.group?.delete) {
     await bridge.group.delete(g.id)
     if (currentGroupId.value === g.id) currentGroupId.value = null
     await reloadGroups()
     await reloadImages(currentGroupId.value)
   }
+  deleteOpen.value = false
 }
 
 // === 单项右键菜单 ===
@@ -406,7 +447,7 @@ async function moveSingleToGroup(groupId: string | null) {
       <aside class="w-64 shrink-0 border-r border-[hsl(var(--border))] p-1">
         <div class="flex items-center justify-between mb-2">
           <div class="text-sm font-medium">分组</div>
-          <button class="btn btn-outline" @click="createGroup">新建</button>
+          <button class="btn btn-outline" @click="openCreateGroup">新建</button>
         </div>
         <ul class="space-y-1">
           <li>
@@ -453,10 +494,10 @@ async function moveSingleToGroup(groupId: string | null) {
                 <span class="text-xs px-2 py-0.5 rounded bg-[hsl(var(--muted))] text-[hsl(var(--muted-foreground))]">
                   {{ groupCounts[String(g.id)] || 0 }}
                 </span>
-                <button class="p-1 rounded hover:bg-[hsl(var(--muted))]" title="重命名" @click.stop="renameGroup(g)">
+                <button class="p-1 rounded hover:bg-[hsl(var(--muted))]" title="重命名" @click.stop="openRenameGroup(g)">
                   <Pencil class="h-3 w-3" />
                 </button>
-                <button class="p-1 rounded hover:bg-[hsl(var(--muted))]" title="删除" @click.stop="deleteGroup(g)">
+                <button class="p-1 rounded hover:bg-[hsl(var(--muted))]" title="删除" @click.stop="openDeleteGroup(g)">
                   <Trash2 class="h-3 w-3" />
                 </button>
               </div>
@@ -489,7 +530,7 @@ async function moveSingleToGroup(groupId: string | null) {
                 </select>
                 <button class="btn" @click="moveSelectedToGroup">确定</button>
               </div>
-              <button class="btn-danger" @click="deleteSelected">
+              <button class="btn-danger" @click="bulkDeleteOpen = true">
                 <Trash2 class="h-4 w-4" />
                 <span>删除所选</span>
               </button>
@@ -797,6 +838,79 @@ async function moveSingleToGroup(groupId: string | null) {
         </div>
       </div>
     </Teleport>
+    <!-- 分组：新建对话框 -->
+    <DialogRoot v-model:open="createOpen">
+      <DialogPortal>
+        <DialogOverlay class="fixed inset-0 bg-black/50 backdrop-blur-sm" />
+        <DialogContent class="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[420px] max-w-[90vw] card-base p-4">
+          <DialogTitle class="text-lg font-semibold mb-1">新建分组</DialogTitle>
+          <DialogDescription class="text-sm text-[hsl(var(--muted-foreground))] mb-3">请输入分组名称</DialogDescription>
+          <input v-model="createName" class="input-base w-full" placeholder="分组名称" @keyup.enter="submitCreateGroup" />
+          <div class="flex items-center justify-end gap-2 mt-4">
+            <DialogClose as-child>
+              <button class="btn btn-outline">取消</button>
+            </DialogClose>
+            <button class="btn btn-primary" :disabled="!createName.trim()" @click="submitCreateGroup">创建</button>
+          </div>
+        </DialogContent>
+      </DialogPortal>
+    </DialogRoot>
+
+    <!-- 分组：重命名对话框 -->
+    <DialogRoot v-model:open="renameOpen">
+      <DialogPortal>
+        <DialogOverlay class="fixed inset-0 bg-black/50 backdrop-blur-sm" />
+        <DialogContent class="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[420px] max-w-[90vw] card-base p-4">
+          <DialogTitle class="text-lg font-semibold mb-1">重命名分组</DialogTitle>
+          <DialogDescription class="text-sm text-[hsl(var(--muted-foreground))] mb-3">请输入新的名称</DialogDescription>
+          <input v-model="renameName" class="input-base w-full" placeholder="新名称" @keyup.enter="submitRenameGroup" />
+          <div class="flex items-center justify-end gap-2 mt-4">
+            <DialogClose as-child>
+              <button class="btn btn-outline">取消</button>
+            </DialogClose>
+            <button class="btn btn-primary" :disabled="!renameName.trim()" @click="submitRenameGroup">保存</button>
+          </div>
+        </DialogContent>
+      </DialogPortal>
+    </DialogRoot>
+
+    <!-- 分组：删除确认对话框 -->
+    <DialogRoot v-model:open="deleteOpen">
+      <DialogPortal>
+        <DialogOverlay class="fixed inset-0 bg-black/50 backdrop-blur-sm" />
+        <DialogContent class="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[420px] max-w-[90vw] card-base p-4">
+          <DialogTitle class="text-lg font-semibold mb-1">删除分组</DialogTitle>
+          <DialogDescription class="text-sm text-[hsl(var(--muted-foreground))] mb-3">
+            确定删除“{{ deleteTarget?.name }}”？组内图片将变为未分组。
+          </DialogDescription>
+          <div class="flex items-center justify-end gap-2 mt-2">
+            <DialogClose as-child>
+              <button class="btn btn-outline">取消</button>
+            </DialogClose>
+            <button class="btn btn-danger" @click="submitDeleteGroup">删除</button>
+          </div>
+        </DialogContent>
+      </DialogPortal>
+    </DialogRoot>
+
+    <!-- 批量删除确认对话框 -->
+    <DialogRoot v-model:open="bulkDeleteOpen">
+      <DialogPortal>
+        <DialogOverlay class="fixed inset-0 bg-black/50 backdrop-blur-sm" />
+        <DialogContent class="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[480px] max-w-[90vw] card-base p-4">
+          <DialogTitle class="text-lg font-semibold mb-1">删除所选素材</DialogTitle>
+          <DialogDescription class="text-sm text-[hsl(var(--muted-foreground))] mb-3">
+            将删除选中的 {{ selected.size }} 张图片及其关联的任务与结果，且不可恢复。
+          </DialogDescription>
+          <div class="flex items-center justify-end gap-2 mt-2">
+            <DialogClose as-child>
+              <button class="btn btn-outline">取消</button>
+            </DialogClose>
+            <button class="btn btn-danger" @click="submitBulkDelete">删除</button>
+          </div>
+        </DialogContent>
+      </DialogPortal>
+    </DialogRoot>
     <!-- 右键菜单 -->
     <div v-if="ctxVisible" class="fixed inset-0 z-[9998]" @click="closeContextMenu"></div>
     <div
