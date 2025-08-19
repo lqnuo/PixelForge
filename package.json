@@ -29,6 +29,7 @@
     "drizzle-orm": "^0.44.4",
     "electron-updater": "^6.3.9",
     "lucide-vue-next": "latest",
+    "vue-draggable-next": "latest",
     "tailwind-merge": "^3.3.1"
   },
   "devDependencies": {

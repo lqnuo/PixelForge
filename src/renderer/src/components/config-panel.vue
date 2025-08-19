@@ -1,0 +1,66 @@
+<script setup lang="ts">
+import type { StyleItem } from '@/types'
+
+const props = defineProps<{
+  styles: StyleItem[]
+  selectedStyleId: string | null
+  aspect: '1:1' | '3:4'
+  isGenerating: boolean
+  lastError: string | null
+  jobs: any[]
+}>()
+
+const emit = defineEmits<{
+  (e: 'update:selectedStyleId', id: string | null): void
+  (e: 'update:aspect', value: '1:1' | '3:4'): void
+  (e: 'generate'): void
+  (e: 'retryJob', id: string): void
+}>()
+</script>
+
+<template>
+  <div class="col-span-4 border-r p-4 space-y-4">
+    <div class="font-semibold">配置</div>
+    <div v-if="lastError" class="p-2 text-sm text-red-700 bg-red-50 border border-red-200 rounded">
+      出错了：{{ lastError }}
+      <button
+        v-for="j in jobs.filter((j:any) => j.status === 'failed').slice(0,1)"
+        :key="j.id"
+        class="ml-3 px-2 py-1 text-xs rounded border border-red-300 hover:bg-red-100"
+        @click="emit('retryJob', j.id)"
+      >重试</button>
+    </div>
+    <div>
+      <div class="text-sm mb-2">风格预设</div>
+      <div class="flex flex-wrap gap-2">
+        <button
+          v-for="s in styles"
+          :key="s.id"
+          class="btn"
+          :class="selectedStyleId === s.id ? 'btn-primary' : 'btn-outline'"
+          @click="emit('update:selectedStyleId', s.id)"
+        >{{ s.name }}</button>
+      </div>
+    </div>
+    <div>
+      <div class="text-sm mb-2">尺寸比例</div>
+      <div class="flex gap-2">
+        <button
+          v-for="a in ['1:1','3:4']"
+          :key="a"
+          class="btn"
+          :class="aspect === a ? 'btn-primary' : 'btn-outline'"
+          @click="emit('update:aspect', a as any)"
+        >{{ a }}</button>
+      </div>
+    </div>
+    <div>
+      <button class="btn btn-primary" :disabled="isGenerating" @click="emit('generate')">
+        {{ isGenerating ? '生成中…' : '开始生成' }}
+      </button>
+    </div>
+  </div>
+</template>
+
+<style scoped></style>
+
