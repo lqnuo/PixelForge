@@ -74,11 +74,6 @@ onMounted(() => {
   // 初始化Toast管理器
   if (toastRef.value) {
     toastManager.setToastInstance(toastRef.value)
-    
-    // 显示欢迎消息
-    setTimeout(() => {
-      toastManager.success('欢迎使用 Qwan Studio', 'AI图片生成管理平台')
-    }, 1000)
   }
 })
 </script>
@@ -95,7 +90,7 @@ onMounted(() => {
           </div>
           <div>
             <h1 class="font-bold text-lg text-[hsl(var(--foreground))] tracking-tight">
-              Qwan Studio
+              PixelForge
             </h1>
             <p class="text-xs text-[hsl(var(--muted-foreground))] mt-0.5">
               AI图片生成管理
