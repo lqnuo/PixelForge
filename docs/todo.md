@@ -11,8 +11,10 @@ MVP TODO（依据 docs/spec-mvp.md）
 - [x] 在主进程初始化数据库连接（`userData/app.db`）
 - [x] 定义 `src/main/db/schema.ts`（BLOB + 预览）
 - [ ] 配置 `drizzle.config.ts` 并生成首版迁移
+  - [x] 已添加 `drizzle.config.ts`（生成迁移需安装并执行 `drizzle-kit`）
 - [ ] 启动时执行/同步迁移；创建必要索引（`images.sha256` 唯一等）
 - [ ] 提供“清空数据”方法（谨慎确认）
+  - [x] 已实现 IPC `db.clear(confirmToken)`，令牌为 `CONFIRM_CLEAR`
 
 三、主进程 IPC 接口（受控白名单、校验参数）
 - [x] `image.upload(items) -> Image[]`（读取为 Buffer、sha256 去重、写 BLOB、生成预览占位）
@@ -31,6 +33,7 @@ MVP TODO（依据 docs/spec-mvp.md）
 - [x] Job 状态流转：queued -> processing -> done（失败分支待补）
 - [x] 生成服务抽象（Mock）：复制原图写入 `results.data_blob`、`preview_base64`
 - [ ] 进度/完成事件通过 IPC 通知渲染进程
+  - [x] 已实现：`job.updated` / `result.created` 事件；渲染进程自动刷新
 
 五、渲染进程 UI（React + shadcn/ui）
 - [x] Tailwind 配置与全局样式
@@ -54,6 +57,7 @@ MVP TODO（依据 docs/spec-mvp.md）
 
 八、安全与隔离
 - [ ] 启用 `contextIsolation`、`sandbox`，严格限制 `preload` 暴露 API
+  - [x] 已启用：`BrowserWindow.webPreferences.sandbox=true`、`contextIsolation=true`
 - [ ] IPC 参数校验与来源校验，禁用任意通道
 
 九、打包与分发

@@ -2,11 +2,22 @@ import { getDb } from '../db'
 import { jobs, images, results } from '../db/schema'
 import { eq } from 'drizzle-orm'
 import { randomUUID } from 'crypto'
+import { BrowserWindow } from 'electron'
 
 let running = false
 let queue: string[] = []
 const CONCURRENCY = 1
 let active = 0
+
+function broadcast(channel: string, payload: any) {
+  for (const win of BrowserWindow.getAllWindows()) {
+    try {
+      win.webContents.send(channel, payload)
+    } catch {
+      // ignore
+    }
+  }
+}
 
 export function enqueueJob(jobId: string) {
   queue.push(jobId)
@@ -36,12 +47,14 @@ async function processJob(jobId: string) {
   const db = getDb()
   // mark processing
   db.update(jobs).set({ status: 'processing' }).where(eq(jobs.id, jobId)).run()
+  broadcast('job.updated', { jobId, status: 'processing' })
   // load job and image
   const job = db.select().from(jobs).where(eq(jobs.id, jobId)).get()
   if (!job) return
   const img = db.select().from(images).where(eq(images.id, job.sourceImageId)).get()
   if (!img) {
     db.update(jobs).set({ status: 'failed', error: 'SOURCE_IMAGE_NOT_FOUND' }).where(eq(jobs.id, jobId)).run()
+    broadcast('job.updated', { jobId, status: 'failed', error: 'SOURCE_IMAGE_NOT_FOUND' })
     return
   }
   // Mock generation: copy the source buffer as result
@@ -56,6 +69,7 @@ async function processJob(jobId: string) {
     dataBlob: img.dataBlob as unknown as Buffer,
     previewBase64: img.previewBase64 ?? null,
   }).run()
+  broadcast('result.created', { id: rid, jobId, sourceImageId: job.sourceImageId })
   db.update(jobs).set({ status: 'done', error: null }).where(eq(jobs.id, jobId)).run()
+  broadcast('job.updated', { jobId, status: 'done' })
 }
-

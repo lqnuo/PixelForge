@@ -37,6 +37,24 @@ function App(): React.JSX.Element {
     window.api.result.listByImage(selectedImageId).then(setResults)
   }, [selectedImageId])
 
+  useEffect(() => {
+    // Listen to background job events and refresh results when relevant
+    const offResult = window.api.events?.onResultCreated?.(async (p: any) => {
+      if (selectedImageId && p?.sourceImageId === selectedImageId) {
+        setResults(await window.api.result.listByImage(selectedImageId))
+      }
+    })
+    const offJob = window.api.events?.onJobUpdated?.(async (_p: any) => {
+      if (selectedImageId) {
+        setResults(await window.api.result.listByImage(selectedImageId))
+      }
+    })
+    return () => {
+      try { offResult && offResult() } catch {}
+      try { offJob && offJob() } catch {}
+    }
+  }, [selectedImageId])
+
   const selectedImage = useMemo(() => images.find((i) => i.id === selectedImageId) || null, [images, selectedImageId])
 
   async function handleUpload(evt: React.ChangeEvent<HTMLInputElement>) {

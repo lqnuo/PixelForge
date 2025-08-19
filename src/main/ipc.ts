@@ -147,4 +147,18 @@ export function registerIpcHandlers() {
     writeFileSync(filePath, buf)
     return { ok: true, filePath }
   })
+
+  ipcMain.handle('db.clear', async (_evt, payload: { confirmToken: string }) => {
+    if (!payload?.confirmToken || payload.confirmToken !== 'CONFIRM_CLEAR') {
+      return { ok: false, code: 'E_VALIDATION', message: 'Invalid confirm token' }
+    }
+    try {
+      db.delete(results).run()
+      db.delete(jobs).run()
+      db.delete(images).run()
+      return { ok: true }
+    } catch (e) {
+      return { ok: false, code: 'E_IO', message: 'Failed to clear database' }
+    }
+  })
 }
