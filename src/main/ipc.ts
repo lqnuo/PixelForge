@@ -9,6 +9,7 @@ import { enqueueJob } from './jobs/worker'
 import { logger } from './utils/log'
 import { withRetry } from './utils/retry'
 import { isArray, isString, validateUploadItem } from './utils/validate'
+import { getAllSettings, getSetting, setSetting } from './utils/settings'
 
 type UploadItem = {
   filename: string
@@ -374,6 +375,30 @@ export function registerIpcHandlers() {
     } catch (e) {
       logger.error('db.clear failed', e)
       return { ok: false, code: 'E_IO', message: 'Failed to clear database' }
+    }
+  })
+
+  // === App settings (for API keys, endpoints) ===
+  ipcMain.handle('config.getAll', async (evt) => {
+    if (!isTrustedSender(evt)) return {}
+    return getAllSettings()
+  })
+  ipcMain.handle('config.get', async (evt, payload: { key: string }) => {
+    if (!isTrustedSender(evt)) return null
+    const key = String(payload?.key || '') as any
+    if (!key) return null
+    return getSetting(key)
+  })
+  ipcMain.handle('config.set', async (evt, payload: { key: string; value: string }) => {
+    if (!isTrustedSender(evt)) return { ok: false }
+    const key = String(payload?.key || '') as any
+    const value = String(payload?.value ?? '')
+    if (!key) return { ok: false }
+    try {
+      setSetting(key, value)
+      return { ok: true }
+    } catch {
+      return { ok: false }
     }
   })
 }

@@ -53,6 +53,11 @@ const api = {
   db: {
     clear: (confirmToken: string) => ipcRenderer.invoke('db.clear', { confirmToken })
   },
+  config: {
+    getAll: () => ipcRenderer.invoke('config.getAll'),
+    get: (key: string) => ipcRenderer.invoke('config.get', { key }),
+    set: (key: string, value: string) => ipcRenderer.invoke('config.set', { key, value })
+  },
   events: {
     onJobUpdated: (cb: (payload: any) => void) => {
       const listener = (_: any, payload: any) => cb(payload)

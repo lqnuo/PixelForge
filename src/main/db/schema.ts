@@ -52,3 +52,8 @@ export const groups = sqliteTable('groups', {
   name: text('name').notNull(),
   createdAt: integer('created_at').notNull().default(sql`(strftime('%s','now'))`),
 })
+
+export const appSettings = sqliteTable('settings', {
+  key: text('key').primaryKey(),
+  value: text('value')
+})

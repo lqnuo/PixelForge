@@ -5,9 +5,10 @@ import { useTheme } from './composables/useTheme'
 import { toastManager } from './composables/useToast'
 import UploadsPage from './pages/uploads-page.vue'
 import JobsPage from './pages/jobs-page.vue'
+import SettingsPage from './pages/settings-page.vue'
 import Toast from './components/ui/Toast.vue'
 
-const tab = ref<'uploads' | 'jobs'>('uploads')
+const tab = ref<'uploads' | 'jobs' | 'settings'>('uploads')
 const { currentTheme, isDark, themeIcon, themeLabel, toggleTheme } = useTheme()
 
 // Toast实例引用
@@ -17,7 +18,7 @@ const toastRef = ref<any>(null)
 const isTransitioning = ref(false)
 
 // 切换页面with动画
-const switchTab = async (newTab: 'uploads' | 'jobs') => {
+const switchTab = async (newTab: 'uploads' | 'jobs' | 'settings') => {
   if (newTab === tab.value) return
   
   isTransitioning.value = true
@@ -42,6 +43,13 @@ const navItems = computed(() => [
     icon: ListChecks,
     description: '查看和管理生成任务',
     active: tab.value === 'jobs'
+  },
+  {
+    id: 'settings',
+    label: '设置',
+    icon: Settings,
+    description: 'API Key 与服务配置',
+    active: tab.value === 'settings'
   }
 ])
 
@@ -107,7 +115,7 @@ onMounted(() => {
               'nav-item-base group relative overflow-hidden w-full',
               item.active ? 'nav-item-active' : ''
             ]"
-            @click="switchTab(item.id as 'uploads' | 'jobs')"
+            @click="switchTab(item.id as 'uploads' | 'jobs' | 'settings')"
             :aria-current="item.active"
           >
             <component :is="item.icon" class="h-5 w-5 shrink-0 transition-transform group-hover:scale-110" />
@@ -139,7 +147,7 @@ onMounted(() => {
         </button>
         
         <!-- 用户信息 -->
-        <div class="flex items-center gap-3 p-3 h-16 rounded-lg bg-[hsl(var(--muted))]/30">
+        <div class="flex items-center gap-3 h-16 rounded-lg bg-[hsl(var(--muted))]/30">
           <div class="h-8 w-8 rounded-full bg-gradient-to-br from-green-400 to-blue-500 flex items-center justify-center">
             <User class="h-4 w-4 text-white" />
           </div>
@@ -161,7 +169,8 @@ onMounted(() => {
         ]"
       >
         <UploadsPage v-if="tab === 'uploads'" class="animate-fade-in" />
-        <JobsPage v-else class="animate-fade-in" />
+        <JobsPage v-else-if="tab === 'jobs'" class="animate-fade-in" />
+        <SettingsPage v-else class="animate-fade-in" />
       </div>
     </main>
 

@@ -16,7 +16,7 @@ declare global {
           dataBase64: string
           previewBase64?: string | null
         }>) => Promise<Array<any>>
-        list: () => Promise<Array<any>>
+        list: (params?: { groupId?: string | null }) => Promise<Array<any>>
         delete: (imageId: string) => Promise<{ ok: boolean; code?: string; message?: string }>
       }
       job: {
@@ -39,6 +39,11 @@ declare global {
       }
       db: {
         clear: (confirmToken: string) => Promise<{ ok: boolean; code?: string; message?: string }>
+      }
+      config: {
+        getAll: () => Promise<Record<string, string>>
+        get: (key: string) => Promise<string | null>
+        set: (key: string, value: string) => Promise<{ ok: boolean }>
       }
       events: {
         onJobUpdated: (cb: (payload: any) => void) => () => void

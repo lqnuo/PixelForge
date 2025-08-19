@@ -85,6 +85,12 @@ function ensureSchema(sqlite: Database.Database) {
     name TEXT NOT NULL,
     created_at INTEGER NOT NULL DEFAULT (strftime('%s','now'))
   );
+  
+  -- Key-Value settings storage
+  CREATE TABLE IF NOT EXISTS settings (
+    key TEXT PRIMARY KEY,
+    value TEXT
+  );
   `
   sqlite.exec(ddl)
 
