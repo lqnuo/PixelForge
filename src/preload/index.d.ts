@@ -14,12 +14,15 @@ declare global {
           width?: number
           height?: number
           dataBase64: string
+          previewBase64?: string | null
         }>) => Promise<Array<any>>
         list: () => Promise<Array<any>>
         delete: (imageId: string) => Promise<{ ok: boolean; code?: string; message?: string }>
       }
       job: {
         create: (params: { imageId: string; styleId?: string | null; aspectRatio: string }) => Promise<any>
+        bulkCreate: (params: { imageIds: string[]; styleId?: string | null; aspectRatio: string }) => Promise<any>
+        list: (params?: { page?: number; pageSize?: number; status?: string | null }) => Promise<{ items: any[]; total: number; page: number; pageSize: number }>
         listByImage: (imageId: string) => Promise<Array<any>>
         retry: (jobId: string) => Promise<{ ok: boolean } | { ok: false; code: string; message: string }>
       }

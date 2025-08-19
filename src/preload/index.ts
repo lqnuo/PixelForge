@@ -12,6 +12,7 @@ const api = {
         width?: number
         height?: number
         dataBase64: string
+        previewBase64?: string | null
       }>
     ) => ipcRenderer.invoke('image.upload', { items }),
     list: () => ipcRenderer.invoke('image.list'),

@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { onMounted, ref, computed, watch, nextTick } from 'vue'
 import { Search, Filter, Grid3X3, Grid, Upload, Trash2, Sparkles, Eye, Download, MoreVertical, X, Check, AlertCircle } from 'lucide-vue-next'
+import { DialogRoot, DialogTrigger, DialogPortal, DialogOverlay, DialogContent, DialogTitle, DialogDescription, DialogClose } from 'reka-ui'
 import Pagination from '@/components/ui/Pagination.vue'
 import { toastManager } from '@/composables/useToast'
 import type { ImageItem, StyleItem } from '@/types'
@@ -23,6 +24,7 @@ const sortBy = ref<'name' | 'date' | 'size'>('date')
 const sortOrder = ref<'asc' | 'desc'>('desc')
 const viewMode = ref<'grid' | 'list'>('grid')
 const aspect = ref<'1:1' | '3:4'>('1:1')
+const confirmOpen = ref(false)
 
 // === 分页状态 ===
 const page = ref(1)
@@ -92,6 +94,12 @@ onMounted(async () => {
   styles.value = await bridge.style.list()
 })
 
+watch(confirmOpen, (open) => {
+  if (open && !selectedStyleId.value && styles.value.length > 0) {
+    selectedStyleId.value = styles.value[0].id
+  }
+})
+
 function toggleAllOnPage(checked: boolean) {
   for (const it of pageItems.value) {
     if (checked) selected.value.add(it.id)
@@ -126,8 +134,7 @@ async function onInputChange(evt: Event) {
 async function uploadFiles(files: File[]) {
   const items: any[] = []
   for (const f of files) {
-    const arr = await f.arrayBuffer()
-    const base64 = Buffer.from(arr).toString('base64')
+    const base64 = await fileToBase64(f)
     const preview = await resizePreview(f, 320)
     items.push({ filename: f.name, mimeType: f.type || 'image/png', sizeBytes: f.size, dataBase64: base64, previewBase64: preview })
   }
@@ -137,14 +144,12 @@ async function uploadFiles(files: File[]) {
 
 async function generateSelected() {
   if (selected.value.size === 0) return
-  if (!selectedStyleId.value) {
-    alert('请先选择风格')
-    return
-  }
+  if (!selectedStyleId.value) return
   isGenerating.value = true
   const ids = Array.from(selected.value)
   await bridge.job.bulkCreate({ imageIds: ids, styleId: selectedStyleId.value, aspectRatio: aspect.value })
   isGenerating.value = false
+  confirmOpen.value = false
 }
 
 async function deleteSelected() {
@@ -158,9 +163,15 @@ async function deleteSelected() {
 }
 
 async function resizePreview(file: File, maxWidth: number): Promise<string> {
-  const url = URL.createObjectURL(file)
+  // Use data URL to satisfy CSP (img-src 'self' data:)
+  const dataUrlSrc = await new Promise<string>((resolve, reject) => {
+    const reader = new FileReader()
+    reader.onload = () => resolve(reader.result as string)
+    reader.onerror = (e) => reject(e)
+    reader.readAsDataURL(file)
+  })
   try {
-    const img = await loadImage(url)
+    const img = await loadImage(dataUrlSrc)
     const scale = Math.min(1, maxWidth / (img.width || 1))
     const w = Math.max(1, Math.round((img.width || maxWidth) * scale))
     const h = Math.max(1, Math.round((img.height || maxWidth) * scale))
@@ -172,7 +183,7 @@ async function resizePreview(file: File, maxWidth: number): Promise<string> {
     const dataUrl = canvas.toDataURL(file.type || 'image/png', 0.8)
     return dataUrl.split(',')[1] || ''
   } finally {
-    URL.revokeObjectURL(url)
+    // nothing to revoke when using FileReader data URL
   }
 }
 
@@ -182,6 +193,20 @@ function loadImage(url: string): Promise<HTMLImageElement> {
     img.onload = () => resolve(img)
     img.onerror = (e) => reject(e)
     img.src = url
+  })
+}
+
+// 将文件读取为base64（不带data:前缀）
+function fileToBase64(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader()
+    reader.onload = () => {
+      const result = reader.result as string
+      const comma = result.indexOf(',')
+      resolve(comma >= 0 ? result.slice(comma + 1) : result)
+    }
+    reader.onerror = (e) => reject(e)
+    reader.readAsDataURL(file)
   })
 }
 
@@ -330,37 +355,72 @@ function formatDate(timestamp: number): string {
       </div>
     </div>
 
-    <!-- === 生成配置区域 === -->
-    <div v-if="selected.size > 0" class="bg-gradient-to-r from-[hsl(var(--primary))]/5 to-[hsl(var(--accent))]/5 border-y border-[hsl(var(--border))] p-4 animate-slide-in-from-bottom">
+    <!-- === 生成操作条（点击后弹出确认框） === -->
+    <div v-if="selected.size > 0" class="bg-gradient-to-r from-[hsl(var(--primary))]/5 to-[hsl(var(--accent))]/5 border-y border-[hsl(var(--border))] py-2 px-4 animate-slide-in-from-bottom">
       <div class="flex items-center justify-between">
-        <div class="flex items-center gap-4">
-          <div class="flex items-center gap-2">
-            <Sparkles class="h-5 w-5 text-[hsl(var(--primary))]" />
-            <span class="font-medium">AI生成配置</span>
-          </div>
-          
-          <select v-model="selectedStyleId" class="select-base min-w-40">
-            <option :value="null">选择艺术风格</option>
-            <option v-for="s in styles" :key="s.id" :value="s.id">{{ s.name }}</option>
-          </select>
-          
-          <select v-model="aspect" class="select-base">
-            <option value="1:1">1:1 正方形</option>
-            <option value="3:4">3:4 竖版</option>
-          </select>
+        <div class="flex items-center gap-3">
+          <Sparkles class="h-5 w-5 text-[hsl(var(--primary))]" />
+          <span class="font-medium">已选择 {{ selected.size }} 项</span>
         </div>
-        
-        <button
-          class="btn-primary"
-          :disabled="isGenerating || !selectedStyleId"
-          @click="generateSelected"
-        >
+        <button class="btn-primary" :disabled="isGenerating" @click="confirmOpen = true">
           <span v-if="isGenerating" class="spinner mr-2"></span>
-          <Sparkles v-else class="h-4 w-4" />
-          <span>{{ isGenerating ? '生成中...' : `生成 ${selected.size} 张图片` }}</span>
+          <Sparkles v-else class="w-4 h-4 mr-1" />
+          生成
         </button>
       </div>
     </div>
+
+    <!-- === 生成确认弹窗（Reka UI Dialog） === -->
+    <DialogRoot v-model:open="confirmOpen">
+      <DialogPortal>
+        <DialogOverlay class="fixed inset-0 bg-black/50 backdrop-blur-sm" />
+        <DialogContent class="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[520px] max-w-[90vw] card-base p-4">
+          <DialogTitle class="text-lg font-semibold mb-1">选择风格与尺寸</DialogTitle>
+          <DialogDescription class="text-sm text-[hsl(var(--muted-foreground))] mb-4">
+            请确认本次生成使用的艺术风格与比例。
+          </DialogDescription>
+
+          <!-- 风格选择 -->
+          <div class="mb-4">
+            <div class="text-sm mb-2">风格预设</div>
+            <div class="grid grid-cols-3 gap-2 max-h-60 overflow-auto pr-1">
+              <button
+                v-for="s in styles"
+                :key="s.id"
+                class="btn"
+                :class="selectedStyleId === s.id ? 'btn-primary' : 'btn-outline'"
+                @click="selectedStyleId = s.id"
+              >{{ s.name }}</button>
+            </div>
+          </div>
+
+          <!-- 尺寸选择 -->
+          <div class="mb-4">
+            <div class="text-sm mb-2">尺寸比例</div>
+            <div class="segmented">
+              <button
+                :class="['segmented-item', { 'data-[active=true]': aspect === '1:1' }]"
+                @click="aspect = '1:1'"
+              >1:1 正方形</button>
+              <button
+                :class="['segmented-item', { 'data-[active=true]': aspect === '3:4' }]"
+                @click="aspect = '3:4'"
+              >3:4 竖版</button>
+            </div>
+          </div>
+
+          <div class="flex items-center justify-end gap-2 pt-2 border-t">
+            <DialogClose as-child>
+              <button class="btn btn-outline">取消</button>
+            </DialogClose>
+            <button class="btn btn-primary" :disabled="!selectedStyleId || isGenerating" @click="generateSelected">
+              <span v-if="isGenerating" class="spinner mr-2"></span>
+              确认生成
+            </button>
+          </div>
+        </DialogContent>
+      </DialogPortal>
+    </DialogRoot>
 
     <!-- === 状态栏 === -->
     <div class="px-6 py-3 border-b border-[hsl(var(--border))] bg-[hsl(var(--muted))]/20 flex items-center justify-between text-sm">
@@ -381,7 +441,7 @@ function formatDate(timestamp: number): string {
     <div class="flex-1 overflow-auto">
       <div 
         v-if="viewMode === 'grid'"
-        class="grid-auto-fill p-2 animate-fade-in"
+        class="grid grid-cols-[repeat(auto-fill,minmax(200px,1fr))] gap-3 p-2 animate-fade-in"
         @dragover.prevent="isDragging = true"
         @dragenter.prevent="isDragging = true"
         @dragleave="isDragging = false"
@@ -451,7 +511,7 @@ function formatDate(timestamp: number): string {
           </div>
           
           <!-- 信息区域 -->
-          <div class="p-4">
+          <div class="p-3">
             <h3 class="font-medium text-sm text-[hsl(var(--foreground))] truncate mb-1">
               {{ item.filename || item.id }}
             </h3>
