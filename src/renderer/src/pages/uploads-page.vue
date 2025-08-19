@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { onMounted, ref, computed, watch, nextTick } from 'vue'
 import { Search, Filter, Grid3X3, Grid, Upload, Trash2, Sparkles, Eye, Download, MoreVertical, X, Check, AlertCircle } from 'lucide-vue-next'
+import Pagination from '@/components/ui/Pagination.vue'
 import { toastManager } from '@/composables/useToast'
 import type { ImageItem, StyleItem } from '@/types'
 
@@ -373,16 +374,6 @@ function formatDate(timestamp: number): string {
           <input type="checkbox" @change="(e:any)=>toggleAllOnPage(e.target.checked)" class="rounded" />
           <span>本页全选</span>
         </label>
-        
-        <div v-if="pageCount > 1" class="flex items-center gap-2">
-          <button class="btn-ghost px-2 py-1" :disabled="page<=1" @click="page=Math.max(1,page-1)">
-            ← 上一页
-          </button>
-          <span class="px-2 py-1 text-[hsl(var(--muted-foreground))]">{{ page }} / {{ pageCount }}</span>
-          <button class="btn-ghost px-2 py-1" :disabled="page>=pageCount" @click="page=Math.min(pageCount,page+1)">
-            下一页 →
-          </button>
-        </div>
       </div>
     </div>
 
@@ -390,7 +381,7 @@ function formatDate(timestamp: number): string {
     <div class="flex-1 overflow-auto">
       <div 
         v-if="viewMode === 'grid'"
-        class="grid-auto-fill p-6 animate-fade-in"
+        class="grid-auto-fill p-2 animate-fade-in"
         @dragover.prevent="isDragging = true"
         @dragenter.prevent="isDragging = true"
         @dragleave="isDragging = false"
@@ -476,6 +467,18 @@ function formatDate(timestamp: number): string {
           </div>
         </div>
       </div>
+    </div>
+
+    <!-- === 分页（放在列表下方） === -->
+    <div v-if="pageCount > 1" class="px-6 py-3 border-t border-[hsl(var(--border))] bg-[hsl(var(--background))]">
+      <Pagination 
+        v-model:page="page" 
+        :page-count="pageCount" 
+        :total="total"
+        :items-per-page="pageSize"
+        :sibling-count="1"
+        :show-edges="pageCount > 7"
+      />
     </div>
 
     <!-- === 图片预览模态框 === -->

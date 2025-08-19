@@ -1,6 +1,7 @@
 <script setup lang="ts">
-import { onMounted, ref, computed } from 'vue'
+import { onMounted, ref, computed, watch } from 'vue'
 import type { ImageItem } from '@/types'
+import Pagination from '@/components/ui/Pagination.vue'
 
 const bridge: any = (window as any)?.api
 
@@ -37,13 +38,10 @@ onMounted(async () => {
   await fetchJobs()
 })
 
-async function onChangePage(delta: number) {
-  const next = Math.min(pageCount.value, Math.max(1, page.value + delta))
-  if (next !== page.value) {
-    page.value = next
-    await fetchJobs()
-  }
-}
+watch(page, async () => {
+  await fetchJobs()
+})
+
 
 function toggleAllOnPage(checked: boolean) {
   for (const it of jobs.value) {
@@ -92,16 +90,6 @@ async function downloadFirstResult(jobId: string) {
           <option value="done">已完成</option>
           <option value="failed">失败</option>
         </select>
-        <select v-model.number="pageSize" @change="fetchJobs" class="select min-w-24">
-          <option :value="10">10/页</option>
-          <option :value="20">20/页</option>
-          <option :value="50">50/页</option>
-        </select>
-        <div class="flex items-center gap-1">
-          <button class="btn btn-outline !px-2" :disabled="page<=1" @click="onChangePage(-1)">上一页</button>
-          <span class="text-sm text-neutral-500">第 {{ page }} / {{ pageCount }} 页</span>
-          <button class="btn btn-outline !px-2" :disabled="page>=pageCount" @click="onChangePage(1)">下一页</button>
-        </div>
       </div>
     </div>
 
@@ -138,6 +126,11 @@ async function downloadFirstResult(jobId: string) {
         </div>
       </div>
       <div v-if="jobs.length===0" class="p-6 text-sm text-neutral-500">暂无任务</div>
+
+    </div>
+    <!-- 分页：紧跟表格容器之后（容器外，视觉上在表格下面） -->
+    <div v-if="pageCount > 1" class="px-4 py-3 border-t border-[hsl(var(--border))] bg-[hsl(var(--background))]">
+      <Pagination v-model:page="page" :page-count="pageCount" />
     </div>
   </div>
 </template>
