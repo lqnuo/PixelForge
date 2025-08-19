@@ -11,9 +11,14 @@ const api = {
   job: {
     create: (params: { imageId: string; styleId?: string | null; aspectRatio: string }) =>
       ipcRenderer.invoke('job.create', params),
+    listByImage: (imageId: string) => ipcRenderer.invoke('job.listByImage', { imageId }),
   },
   result: {
     listByImage: (imageId: string) => ipcRenderer.invoke('result.listByImage', { imageId }),
+    listByJob: (jobId: string) => ipcRenderer.invoke('result.listByJob', { jobId }),
+  },
+  style: {
+    list: () => ipcRenderer.invoke('style.list'),
   },
   file: {
     download: (resultId: string, suggestedName?: string) =>

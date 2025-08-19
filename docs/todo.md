@@ -16,29 +16,31 @@ MVP TODO（依据 docs/spec-mvp.md）
 
 三、主进程 IPC 接口（受控白名单、校验参数）
 - [x] `image.upload(items) -> Image[]`（读取为 Buffer、sha256 去重、写 BLOB、生成预览占位）
-- [x] `image.list() -> Image[]`（按创建时间倒序：待加排序）
-- [ ] `style.seed(defaults) / style.list()`（预设风格写入与读取）
+- [x] `image.list() -> Image[]`（按创建时间倒序）
+- [x] `style.seed(defaults)`（应用启动时默认风格写入）
+- [x] `style.list()`（预设风格读取）
 - [x] `job.create({ imageId, styleId?, aspectRatio }) -> Job`（入队、置 queued）
-- [ ] `job.listByImage(imageId) -> Job[]`
-- [x] `result.listByImage(imageId) | result.listByJob(jobId) -> Result[]`（已实现 listByImage）
+- [x] `job.listByImage(imageId) -> Job[]`
+- [x] `result.listByImage(imageId) | result.listByJob(jobId) -> Result[]`（两者已实现）
 - [x] `file.download(resultId, targetPath)`（从 BLOB 写磁盘）
 - [ ] `db.clear(confirmToken)`（清空数据）
 - [ ] 错误码与错误信息统一（如 E_VALIDATION、E_DUPLICATE、E_IO 等）
 
 四、生成任务与调度
-- [ ] 任务队列与并发限制（单并发或小于等于 N）
-- [ ] Job 状态流转：queued -> processing -> done/failed（带 error）
-- [ ] 生成服务抽象（占位实现/Mock），写入 `results.data_blob`、`preview_base64`
+- [x] 任务队列与并发限制（单并发占位实现）
+- [x] Job 状态流转：queued -> processing -> done（失败分支待补）
+- [x] 生成服务抽象（Mock）：复制原图写入 `results.data_blob`、`preview_base64`
 - [ ] 进度/完成事件通过 IPC 通知渲染进程
 
 五、渲染进程 UI（React + shadcn/ui）
-- [ ] 集成 Tailwind + shadcn/ui（按钮、卡片、对话框等）
-- [ ] 三栏布局：左（待处理列表+上传区）、中（配置区）、右（结果预览区）
-- [ ] 上传区（拖拽/点选），限制：每次最多 10 张、单图 ≤ 5MB
-- [ ] 左侧：缩略图列表（来自 `images.preview_base64`），选中高亮、状态标识
-- [ ] 中间：风格预设按钮组、尺寸比例选择、“开始生成”按钮
-- [ ] 右侧：结果卡片（原图 vs 生成图）、Loading、放大预览、单张下载
+- [x] Tailwind 配置与全局样式
+- [x] 三栏布局：左（待处理列表+上传区）、中（配置区）、右（结果预览区）
+- [x] 上传区（点选上传，多选）
+- [x] 左侧：缩略图列表（使用 `preview_base64`）与选中态
+- [x] 中间：风格预设按钮组、尺寸比例选择、“开始生成”
+- [x] 右侧：结果卡片（原图 vs 生成图）、单张下载
 - [ ] 空状态、错误提示与重试按钮
+- [ ] 集成 shadcn/ui 组件库（安装依赖与生成组件）
 
 六、样式与体验
 - [ ] 主题与基础色、统一按钮/卡片组件

@@ -1,9 +1,9 @@
 import { ipcMain, dialog } from 'electron'
 import { randomUUID } from 'crypto'
 import { getDb } from './db'
-import { images, jobs, results } from './db/schema'
+import { images, jobs, results, styles } from './db/schema'
 import { sha256 } from './utils/crypto'
-import { eq, and } from 'drizzle-orm'
+import { eq, desc } from 'drizzle-orm'
 import { writeFileSync } from 'fs'
 import { enqueueJob } from './jobs/worker'
 
@@ -15,6 +15,7 @@ type UploadItem = {
   height?: number
   // base64 without data: prefix
   dataBase64: string
+  previewBase64?: string | null
 }
 
 export function registerIpcHandlers() {
@@ -42,7 +43,7 @@ export function registerIpcHandlers() {
         height: it.height ?? null,
         sha256: hash,
         dataBlob: buf,
-        previewBase64: null as string | null,
+        previewBase64: it.previewBase64 ?? null,
       }
       db.insert(images).values(row).run()
       inserted.push(row)
@@ -72,7 +73,7 @@ export function registerIpcHandlers() {
       sha256: images.sha256,
       previewBase64: images.previewBase64,
       createdAt: images.createdAt,
-    }).from(images).all()
+    }).from(images).orderBy(desc(images.createdAt)).all()
     return rows
   })
 
@@ -102,6 +103,30 @@ export function registerIpcHandlers() {
       previewBase64: results.previewBase64,
       createdAt: results.createdAt,
     }).from(results).where(eq(results.sourceImageId, payload.imageId)).all()
+    return rows
+  })
+
+  ipcMain.handle('result.listByJob', async (_evt, payload: { jobId: string }) => {
+    const rows = db.select({
+      id: results.id,
+      jobId: results.jobId,
+      sourceImageId: results.sourceImageId,
+      mimeType: results.mimeType,
+      width: results.width,
+      height: results.height,
+      previewBase64: results.previewBase64,
+      createdAt: results.createdAt,
+    }).from(results).where(eq(results.jobId, payload.jobId)).all()
+    return rows
+  })
+
+  ipcMain.handle('job.listByImage', async (_evt, payload: { imageId: string }) => {
+    const rows = db.select().from(jobs).where(eq(jobs.sourceImageId, payload.imageId)).all()
+    return rows
+  })
+
+  ipcMain.handle('style.list', async () => {
+    const rows = db.select().from(styles).all()
     return rows
   })
 

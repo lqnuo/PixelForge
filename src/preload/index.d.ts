@@ -16,9 +16,14 @@ declare global {
       }
       job: {
         create: (params: { imageId: string; styleId?: string | null; aspectRatio: string }) => Promise<any>
+        listByImage: (imageId: string) => Promise<Array<any>>
       }
       result: {
         listByImage: (imageId: string) => Promise<Array<any>>
+        listByJob: (jobId: string) => Promise<Array<any>>
+      }
+      style: {
+        list: () => Promise<Array<any>>
       }
       file: {
         download: (resultId: string, suggestedName?: string) => Promise<{ ok?: boolean; filePath?: string; canceled?: boolean; error?: string }>
@@ -26,4 +31,3 @@ declare global {
     }
   }
 }
-
