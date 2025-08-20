@@ -29,6 +29,10 @@ const total = ref(0)
 const jobs = ref<JobItem[]>([])
 const selected = ref<Set<string>>(new Set())
 const statusFilter = ref<string | null>(null)
+const statusFilterStr = computed({
+  get: () => (statusFilter.value == null ? 'all' : String(statusFilter.value)),
+  set: (v: string) => { statusFilter.value = v === 'all' ? null : v }
+})
 const images = ref<ImageItem[]>([])
 
 const imageMap = computed(() => new Map(images.value.map((i) => [i.id, i])))
@@ -100,6 +104,10 @@ onMounted(async () => {
 watch(page, async () => {
   await fetchJobs()
 })
+watch(statusFilter, async () => {
+  page.value = 1
+  await fetchJobs()
+})
 
 function toggleAllOnPage(checked: boolean) {
   for (const it of jobs.value) {
@@ -150,10 +158,10 @@ async function downloadFirstResult(jobId: string) {
       </div>
       <div class="flex items-center gap-3">
         <span class="text-xs px-2 py-1 rounded bg-[hsl(var(--muted))] text-[hsl(var(--muted-foreground))]">共 {{ total }} 个任务</span>
-        <Select v-model="(statusFilter as any)" @update:modelValue="fetchJobs">
+        <Select v-model="statusFilterStr">
           <SelectTrigger class="min-w-28"><SelectValue placeholder="全部状态" /></SelectTrigger>
           <SelectContent>
-            <SelectItem value="">全部状态</SelectItem>
+            <SelectItem value="all">全部状态</SelectItem>
             <SelectItem value="queued">排队中</SelectItem>
             <SelectItem value="processing">处理中</SelectItem>
             <SelectItem value="done">已完成</SelectItem>

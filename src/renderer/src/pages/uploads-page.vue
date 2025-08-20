@@ -23,8 +23,8 @@ const selectedStyleId = ref<string | null>(null)
 const currentGroupId = ref<string | null>(null)
 const moveTargetGroupId = ref<string | null>(null)
 const moveTargetGroupIdStr = computed({
-  get: () => (moveTargetGroupId.value === null ? '' : String(moveTargetGroupId.value)),
-  set: (v: string) => { moveTargetGroupId.value = v === '' ? null : v }
+  get: () => (moveTargetGroupId.value === null ? 'null' : String(moveTargetGroupId.value)),
+  set: (v: string) => { moveTargetGroupId.value = v === 'null' ? null : v }
 })
 
 // 分组对话框状态
@@ -560,7 +560,7 @@ async function moveSingleToGroup(groupId: string | null) {
                 <Select v-model="moveTargetGroupIdStr">
                   <SelectTrigger class="min-w-[160px]"><SelectValue placeholder="移动到：无分组" /></SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">移动到：无分组</SelectItem>
+                    <SelectItem value="null">移动到：无分组</SelectItem>
                     <SelectItem v-for="g in groups" :key="g.id" :value="String(g.id)">{{ g.name }}</SelectItem>
                   </SelectContent>
                 </Select>
