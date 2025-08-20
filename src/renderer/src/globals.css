@@ -142,6 +142,10 @@
   --destructive-foreground: 220 30% 3%;
 }
 
+/* Ensure app takes full viewport height */
+html, body, #root { height: 100%; }
+body { margin: 0; }
+
 /* Base body/background using the CSS vars */
 body { background-color: hsl(var(--background)); color: hsl(var(--foreground)); }
 
