@@ -475,7 +475,7 @@ async function moveSingleToGroup(groupId: string | null) {
     <!-- === 重新设计的双栏布局 === -->
     <div class="flex-1 min-h-0 flex gap-6 p-6">
       <!-- 左侧分组管理面板 -->
-      <aside class="w-80 shrink-0 space-y-6">
+      <aside class="w-72 shrink-0 space-y-6">
         <!-- 分组管理头部 -->
         <div class="flex items-center justify-between">
           <div class="flex items-center gap-3">
