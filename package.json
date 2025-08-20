@@ -40,6 +40,7 @@
     "reka-ui": "^2.4.1",
     "tailwind-merge": "^3.3.1",
     "tailwindcss": "^4.1.12",
+    "tw-animate-css": "^1.3.7",
     "vue": "latest",
     "vue-draggable-next": "latest",
     "vue-sonner": "^2.0.8"

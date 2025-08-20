@@ -5,6 +5,7 @@ import { Pagination, PaginationContent, PaginationEllipsis, PaginationFirst, Pag
 import { Button } from '@/components/ui/button'
 import { Select, SelectTrigger, SelectContent, SelectItem, SelectValue } from '@/components/ui/select'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
+import { ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-vue-next'
 
 const bridge: any = (window as any)?.api
 
@@ -38,6 +39,33 @@ const resultPreviewMap = ref<Map<string, ResultPreview>>(new Map())
 const tableData = computed<TableRow[]>(() =>
   jobs.value.map((j) => ({ ...j, firstResult: resultPreviewMap.value.get(j.id) ?? null }))
 )
+
+// Sorting state and helpers
+const sortBy = ref<'time' | 'status'>('time')
+const sortOrder = ref<'asc' | 'desc'>('desc')
+const statusRank: Record<string, number> = { queued: 0, processing: 1, done: 2, failed: -1 }
+
+const sortedTableData = computed<TableRow[]>(() => {
+  const arr = [...tableData.value]
+  const mul = sortOrder.value === 'asc' ? 1 : -1
+  if (sortBy.value === 'time') {
+    return arr.sort((a, b) => mul * (a.createdAt - b.createdAt))
+  }
+  if (sortBy.value === 'status') {
+    const ra = (s: string) => (s in statusRank ? statusRank[s] : -2)
+    return arr.sort((a, b) => mul * (ra(a.status) - ra(b.status)))
+  }
+  return arr
+})
+
+function toggleSort(field: 'time' | 'status') {
+  if (sortBy.value === field) {
+    sortOrder.value = sortOrder.value === 'asc' ? 'desc' : 'asc'
+  } else {
+    sortBy.value = field
+    sortOrder.value = field === 'time' ? 'desc' : 'asc'
+  }
+}
 
 async function fetchJobs() {
   const res = await bridge.job.list({ page: page.value, pageSize: pageSize.value, status: statusFilter.value || null })
@@ -146,13 +174,27 @@ async function downloadFirstResult(jobId: string) {
             <TableHead>生成图片</TableHead>
             <TableHead>风格</TableHead>
             <TableHead>尺寸</TableHead>
-            <TableHead>状态</TableHead>
-            <TableHead>时间</TableHead>
+            <TableHead>
+              <button class="inline-flex items-center gap-1 hover:underline" @click="toggleSort('status')">
+                状态
+                <ArrowUpDown v-if="sortBy!=='status'" class="h-3.5 w-3.5 opacity-60" />
+                <ArrowUp v-else-if="sortOrder==='asc'" class="h-3.5 w-3.5 opacity-60" />
+                <ArrowDown v-else class="h-3.5 w-3.5 opacity-60" />
+              </button>
+            </TableHead>
+            <TableHead>
+              <button class="inline-flex items-center gap-1 hover:underline" @click="toggleSort('time')">
+                时间
+                <ArrowUpDown v-if="sortBy!=='time'" class="h-3.5 w-3.5 opacity-60" />
+                <ArrowUp v-else-if="sortOrder==='asc'" class="h-3.5 w-3.5 opacity-60" />
+                <ArrowDown v-else class="h-3.5 w-3.5 opacity-60" />
+              </button>
+            </TableHead>
             <TableHead class="w-32">操作</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
-          <TableRow v-for="row in tableData" :key="row.id" class="hover:bg-[hsl(var(--muted))] transition-colors">
+          <TableRow v-for="row in sortedTableData" :key="row.id" class="hover:bg-[hsl(var(--muted))] transition-colors">
             <TableCell>
               <input type="checkbox" :checked="isChecked(row.id)" @change="(e:any)=>toggle(row.id, !!e?.target?.checked)" />
             </TableCell>
