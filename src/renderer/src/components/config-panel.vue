@@ -25,12 +25,13 @@ const emit = defineEmits<{
     <div class="p-4 space-y-4 overflow-auto flex-1">
     <div v-if="lastError" class="p-2 text-sm text-red-700 bg-red-50 border border-red-200 rounded">
       出错了：{{ lastError }}
-      <button
+      <Button
         v-for="j in jobs.filter((j:any) => j.status === 'failed').slice(0,1)"
         :key="j.id"
+        variant="destructive"
         class="ml-3 px-2 py-1 text-xs rounded border border-red-300 hover:bg-red-100"
         @click="emit('retryJob', j.id)"
-      >重试</button>
+      >重试</Button>
     </div>
     <div>
       <div class="text-sm mb-2">风格预设</div>

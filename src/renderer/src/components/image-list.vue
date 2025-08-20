@@ -82,7 +82,8 @@ async function onInputChange(evt: Event) {
       class="space-y-2 overflow-auto p-3 flex-1"
     >
       <template #item="{ element }">
-        <button
+        <Button
+          variant="ghost"
           @click="emit('select', element.id)"
           class="w-full flex items-center gap-2 rounded-md p-2 border hover:bg-[hsl(var(--muted))] transition-colors"
           :class="{ 'ring-2 ring-[hsl(var(--ring))]': selectedImageId === element.id }"
@@ -93,7 +94,7 @@ async function onInputChange(evt: Event) {
             <div class="text-sm font-medium line-clamp-1">{{ element.filename || element.id }}</div>
             <div class="text-xs text-neutral-500">{{ (element.sizeBytes / 1024).toFixed(0) }} KB</div>
           </div>
-        </button>
+        </Button>
       </template>
     </Draggable>
 

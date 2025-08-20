@@ -2,9 +2,9 @@
 import { onMounted, ref, computed, watch, h } from 'vue'
 import type { ImageItem } from '@/types'
 import Pagination from '@/components/ui/Pagination.vue'
-import { createColumnHelper, FlexRender, getCoreRowModel, useVueTable, type ColumnDef } from '@tanstack/vue-table'
 import { Button } from '@/components/ui/button'
 import { Select, SelectTrigger, SelectContent, SelectItem, SelectValue } from '@/components/ui/select'
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 
 const bridge: any = (window as any)?.api
 
@@ -111,115 +111,7 @@ async function downloadFirstResult(jobId: string) {
 }
 
 // === TanStack Table ===
-const columnHelper = createColumnHelper<TableRow>()
-
-  const columns: ColumnDef<TableRow, any>[] = [
-  {
-    id: 'select',
-    header: () =>
-      h('input', {
-        type: 'checkbox',
-        checked: allChecked.value,
-        onChange: (e: any) => toggleAllOnPage(!!e?.target?.checked),
-      }),
-    cell: ({ row }) =>
-      h('input', {
-        type: 'checkbox',
-        checked: isChecked(row.original.id),
-        onChange: (e: any) => toggle(row.original.id, !!e?.target?.checked),
-      }),
-    size: 40,
-    enableSorting: false,
-  },
-  columnHelper.accessor('sourceImageId', {
-    id: 'source',
-    header: '原图片',
-    cell: ({ row }) => {
-      const img = imageMap.value.get(row.original.sourceImageId)
-      const src = img?.previewBase64 ? dataUrl(img!.mimeType, img!.previewBase64) : ''
-      const thumb = img?.previewBase64
-        ? h('img', { src, class: 'h-10 w-10 object-cover rounded' })
-        : h('div', { class: 'h-10 w-10 rounded bg-[hsl(var(--muted))]' })
-      const preview = img?.previewBase64
-        ? h(
-            'div',
-            {
-              class:
-                'absolute left-0 top-full mt-2 hidden group-hover:block z-50 p-2 bg-[hsl(var(--card))] border border-[hsl(var(--border))] rounded-lg shadow-xl',
-            },
-            [h('img', { src, class: 'max-w-80 max-h-80 object-contain rounded' })]
-          )
-        : null
-      return h('div', { class: 'flex items-center gap-2' }, [
-        h('div', { class: 'relative inline-block group' }, [thumb, preview]),
-        h('div', { class: 'line-clamp-1' }, img?.filename || row.original.sourceImageId),
-      ])
-    },
-  }),
-  {
-    id: 'generated',
-    header: '生成图片',
-    cell: ({ row }) => {
-      const r = row.original.firstResult
-      if (!r) return h('span', { class: 'text-neutral-400' }, '—')
-      const src = dataUrl(r.mimeType, r.previewBase64)
-      return h('div', { class: 'relative inline-block group' }, [
-        h('img', { src, class: 'h-10 w-10 object-cover rounded' }),
-        h(
-          'div',
-          {
-            class:
-              'absolute left-0 top-full mt-2 hidden group-hover:block z-50 p-2 bg-[hsl(var(--card))] border border-[hsl(var(--border))] rounded-lg shadow-xl',
-          },
-          [h('img', { src, class: 'max-w-80 max-h-80 object-contain rounded' })]
-        ),
-      ])
-    },
-    size: 80,
-    enableSorting: false,
-  },
-  columnHelper.accessor('styleId', {
-    header: '风格',
-    cell: ({ getValue }) => getValue() || '—',
-  }),
-  columnHelper.accessor('aspectRatio', {
-    header: '尺寸',
-  }),
-  {
-    id: 'status',
-    header: '状态',
-    cell: ({ row }) => {
-      const s = row.original.status
-      if (s === 'done') return h('span', { class: 'badge-success' }, '已完成')
-      if (s === 'failed') return h('span', { class: 'badge-danger' }, '失败')
-      if (s === 'processing') return h('span', { class: 'badge' }, '处理中')
-      return h('span', { class: 'badge-warn' }, '排队中')
-    },
-  },
-  {
-    id: 'time',
-    header: '时间',
-    cell: ({ row }) => new Date(row.original.createdAt * 1000).toLocaleString(),
-  },
-  {
-    id: 'actions',
-    header: '操作',
-    cell: ({ row }) =>
-      h('div', { class: 'flex gap-1' }, [
-        h(Button as any, { variant: 'outline', class: '!px-2 !py-1', onClick: () => bridge.job.retry(row.original.id) }, { default: () => '重试' }),
-        h(Button as any, { variant: 'outline', class: '!px-2 !py-1', onClick: () => downloadFirstResult(row.original.id) }, { default: () => '下载' }),
-      ]),
-    enableSorting: false,
-  },
-]
-
-const table = useVueTable<TableRow>({
-  get data() {
-    return tableData.value
-  },
-  columns,
-  getCoreRowModel: getCoreRowModel(),
-})
+// Removed TanStack table; rendering with shadcn-vue Table components
 </script>
 
 <template>
@@ -244,35 +136,72 @@ const table = useVueTable<TableRow>({
     </div>
 
     <div class="flex-1 overflow-auto">
-      <table class="w-full text-sm border border-[hsl(var(--border))] border-collapse rounded-md">
-        <thead>
-          <tr v-for="hg in table.getHeaderGroups()" :key="hg.id">
-            <th
-              v-for="header in hg.headers"
-              :key="header.id"
-              class="text-left px-3 py-2 text-neutral-500 font-medium align-middle text-xs border border-[hsl(var(--border))]"
-              :style="{ width: (header.getSize ? header.getSize() + 'px' : undefined) as any }"
-            >
-              <div v-if="!header.isPlaceholder">
-                <FlexRender :render="header.column.columnDef.header" :props="header.getContext()" />
+      <Table class="w-full text-sm">
+        <TableHeader>
+          <TableRow>
+            <TableHead class="w-10">
+              <input type="checkbox" :checked="allChecked" @change="(e:any)=>toggleAllOnPage(!!e?.target?.checked)" />
+            </TableHead>
+            <TableHead>原图片</TableHead>
+            <TableHead>生成图片</TableHead>
+            <TableHead>风格</TableHead>
+            <TableHead>尺寸</TableHead>
+            <TableHead>状态</TableHead>
+            <TableHead>时间</TableHead>
+            <TableHead class="w-32">操作</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          <TableRow v-for="row in tableData" :key="row.id" class="hover:bg-[hsl(var(--muted))] transition-colors">
+            <TableCell>
+              <input type="checkbox" :checked="isChecked(row.id)" @change="(e:any)=>toggle(row.id, !!e?.target?.checked)" />
+            </TableCell>
+            <TableCell>
+              <div class="flex items-center gap-2">
+                <div class="relative inline-block group">
+                  <template v-if="imageMap.get(row.sourceImageId)?.previewBase64">
+                    <img :src="dataUrl(imageMap.get(row.sourceImageId)!.mimeType, imageMap.get(row.sourceImageId)!.previewBase64)" class="h-10 w-10 object-cover rounded" />
+                    <div class="absolute left-0 top-full mt-2 hidden group-hover:block z-50 p-2 bg-[hsl(var(--card))] border border-[hsl(var(--border))] rounded-lg shadow-xl">
+                      <img :src="dataUrl(imageMap.get(row.sourceImageId)!.mimeType, imageMap.get(row.sourceImageId)!.previewBase64)" class="max-w-80 max-h-80 object-contain rounded" />
+                    </div>
+                  </template>
+                  <div v-else class="h-10 w-10 rounded bg-[hsl(var(--muted))]" />
+                </div>
+                <div class="line-clamp-1">{{ imageMap.get(row.sourceImageId)?.filename || row.sourceImageId }}</div>
               </div>
-            </th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr v-for="row in table.getRowModel().rows" :key="row.id" class="hover:bg-[hsl(var(--muted))] transition-colors">
-            <td
-              v-for="cell in row.getVisibleCells()"
-              :key="cell.id"
-              class="px-3 py-2 align-middle border border-[hsl(var(--border))]"
-              :style="{ width: (cell.column.getSize ? cell.column.getSize() + 'px' : undefined) as any }"
-            >
-              <FlexRender :render="cell.column.columnDef.cell" :props="cell.getContext()" />
-            </td>
-          </tr>
-        </tbody>
-      </table>
-      <div v-if="jobs.length===0" class="p-6 text-sm text-neutral-500">暂无任务</div>
+            </TableCell>
+            <TableCell>
+              <template v-if="row.firstResult">
+                <div class="relative inline-block group">
+                  <img :src="dataUrl(row.firstResult!.mimeType, row.firstResult!.previewBase64)" class="h-10 w-10 object-cover rounded" />
+                  <div class="absolute left-0 top/full mt-2 hidden group-hover:block z-50 p-2 bg-[hsl(var(--card))] border border-[hsl(var(--border))] rounded-lg shadow-xl">
+                    <img :src="dataUrl(row.firstResult!.mimeType, row.firstResult!.previewBase64)" class="max-w-80 max-h-80 object-contain rounded" />
+                  </div>
+                </div>
+              </template>
+              <span v-else class="text-neutral-400">—</span>
+            </TableCell>
+            <TableCell>{{ row.styleId || '—' }}</TableCell>
+            <TableCell>{{ row.aspectRatio }}</TableCell>
+            <TableCell>
+              <span v-if="row.status==='done'" class="badge-success">已完成</span>
+              <span v-else-if="row.status==='failed'" class="badge-danger">失败</span>
+              <span v-else-if="row.status==='processing'" class="badge">处理中</span>
+              <span v-else class="badge-warn">排队中</span>
+            </TableCell>
+            <TableCell>{{ new Date(row.createdAt * 1000).toLocaleString() }}</TableCell>
+            <TableCell>
+              <div class="flex gap-1">
+                <Button variant="outline" class="!px-2 !py-1" @click="bridge.job.retry(row.id)">重试</Button>
+                <Button variant="outline" class="!px-2 !py-1" @click="downloadFirstResult(row.id)">下载</Button>
+              </div>
+            </TableCell>
+          </TableRow>
+          <TableRow v-if="tableData.length===0">
+            <TableCell :colspan="8" class="text-center text-neutral-500 p-6">暂无任务</TableCell>
+          </TableRow>
+        </TableBody>
+      </Table>
     </div>
     <!-- 分页：紧跟表格容器之后（容器外，视觉上在表格下面） -->
     <div v-if="pageCount > 1" class="px-4 py-3 border-t border-[hsl(var(--border))] bg-[hsl(var(--background))]">

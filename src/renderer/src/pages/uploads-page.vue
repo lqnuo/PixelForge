@@ -474,13 +474,14 @@ async function moveSingleToGroup(groupId: string | null) {
                 currentGroupId === null ? 'nav-item-active' : 'nav-item-base'
               ]"
             >
-              <button
+              <Button
+                variant="ghost"
                 class="flex-1 text-left flex items-center gap-2"
                 @click="currentGroupId = null"
               >
                 <div class="h-2 w-2 rounded-full bg-[hsl(var(--primary))] opacity-60"></div>
                 <span>所有分组</span>
-              </button>
+              </Button>
               <span class="text-xs px-2 py-0.5 rounded bg-[hsl(var(--muted))] text-[hsl(var(--muted-foreground))]">
                 {{ allCount }}
               </span>
@@ -493,31 +494,24 @@ async function moveSingleToGroup(groupId: string | null) {
                 currentGroupId === g.id ? 'nav-item-active' : 'nav-item-base'
               ]"
             >
-              <button
+              <Button
+                variant="ghost"
                 class="flex-1 text-left flex items-center gap-2"
                 @click="currentGroupId = g.id"
               >
                 <div class="h-2 w-2 rounded-full bg-[hsl(var(--primary))] opacity-60"></div>
                 <span class="truncate">{{ g.name }}</span>
-              </button>
+              </Button>
               <div class="flex items-center gap-1.5">
                 <span class="text-xs px-2 py-0.5 rounded bg-[hsl(var(--muted))] text-[hsl(var(--muted-foreground))]">
                   {{ groupCounts[String(g.id)] || 0 }}
                 </span>
-                <button
-                  class="inline-flex items-center justify-center h-6 w-6 rounded-md hover:bg-[hsl(var(--muted))] p-0 opacity-70 hover:opacity-100"
-                  title="重命名"
-                  @click.stop="openRenameGroup(g)"
-                >
+                <Button variant="ghost" class="inline-flex items-center justify-center h-6 w-6 rounded-md p-0 opacity-70 hover:opacity-100" title="重命名" @click.stop="openRenameGroup(g)">
                   <Pencil class="h-3.5 w-3.5" />
-                </button>
-                <button
-                  class="inline-flex items-center justify-center h-6 w-6 rounded-md hover:bg-[hsl(var(--muted))] p-0 opacity-70 hover:opacity-100"
-                  title="删除"
-                  @click.stop="openDeleteGroup(g)"
-                >
+                </Button>
+                <Button variant="ghost" class="inline-flex items-center justify-center h-6 w-6 rounded-md p-0 opacity-70 hover:opacity-100" title="删除" @click.stop="openDeleteGroup(g)">
                   <Trash2 class="h-3.5 w-3.5" />
-                </button>
+                </Button>
               </div>
             </div>
           </li>
@@ -529,13 +523,14 @@ async function moveSingleToGroup(groupId: string | null) {
                 currentGroupId === UNASSIGNED ? 'nav-item-active' : 'nav-item-base'
               ]"
             >
-              <button
+              <Button
+                variant="ghost"
                 class="flex-1 text-left flex items-center gap-2"
                 @click="currentGroupId = UNASSIGNED as any"
               >
                 <div class="h-2 w-2 rounded-full bg-[hsl(var(--primary))] opacity-60"></div>
                 <span>未分组</span>
-              </button>
+              </Button>
               <span class="text-xs px-2 py-0.5 rounded bg-[hsl(var(--muted))] text-[hsl(var(--muted-foreground))]">
                 {{ groupCounts['null'] || 0 }}
               </span>
@@ -592,29 +587,19 @@ async function moveSingleToGroup(groupId: string | null) {
             <div class="relative">
               <Search class="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-[hsl(var(--muted-foreground))]" />
               <Input v-model="searchQuery" type="text" placeholder="搜索素材..." class="pl-10 w-64" />
-              <button
-                v-if="searchQuery"
-                @click="searchQuery = ''"
-                class="absolute right-2 top-1/2 -translate-y-1/2 p-1 hover:bg-[hsl(var(--muted))] rounded"
-              >
+              <Button v-if="searchQuery" variant="ghost" @click="searchQuery = ''" class="absolute right-2 top-1/2 -translate-y-1/2 p-1 hover:bg-[hsl(var(--muted))] rounded">
                 <X class="h-3 w-3" />
-              </button>
+              </Button>
             </div>
             
             <!-- 视图切换 -->
             <div class="segmented">
-              <button
-                :class="['segmented-item', { 'is-active': viewMode === 'grid' }]"
-                @click="viewMode = 'grid'"
-              >
+              <Button variant="ghost" :class="['segmented-item', { 'is-active': viewMode === 'grid' }]" @click="viewMode = 'grid'">
                 <Grid3X3 class="h-4 w-4" />
-              </button>
-              <button
-                :class="['segmented-item', { 'is-active': viewMode === 'list' }]"
-                @click="viewMode = 'list'"
-              >
+              </Button>
+              <Button variant="ghost" :class="['segmented-item', { 'is-active': viewMode === 'list' }]" @click="viewMode = 'list'">
                 <Grid class="h-4 w-4" />
-              </button>
+              </Button>
             </div>
             
             <!-- 高级筛选：由 Accordion 控制展开/收起 -->
@@ -700,13 +685,12 @@ async function moveSingleToGroup(groupId: string | null) {
           <div class="mb-4">
             <div class="text-sm mb-2">风格预设</div>
             <div class="grid grid-cols-3 gap-2 max-h-60 overflow-auto pr-1">
-              <button
+              <Button
                 v-for="s in styles"
                 :key="s.id"
-                class="btn"
-                :class="selectedStyleId === s.id ? 'btn-primary' : 'btn-outline'"
+                :variant="selectedStyleId === s.id ? 'default' : 'outline'"
                 @click="selectedStyleId = s.id"
-              >{{ s.name }}</button>
+              >{{ s.name }}</Button>
             </div>
           </div>
 
@@ -714,14 +698,8 @@ async function moveSingleToGroup(groupId: string | null) {
           <div class="mb-4">
             <div class="text-sm mb-2">尺寸比例</div>
             <div class="segmented">
-              <button
-                :class="['segmented-item', { 'is-active': aspect === '1:1' }]"
-                @click="aspect = '1:1'"
-              >1:1 正方形</button>
-              <button
-                :class="['segmented-item', { 'is-active': aspect === '3:4' }]"
-                @click="aspect = '3:4'"
-              >3:4 竖版</button>
+              <Button variant="ghost" :class="['segmented-item', { 'is-active': aspect === '1:1' }]" @click="aspect = '1:1'">1:1 正方形</Button>
+              <Button variant="ghost" :class="['segmented-item', { 'is-active': aspect === '3:4' }]" @click="aspect = '3:4'">3:4 竖版</Button>
             </div>
           </div>
 
@@ -806,15 +784,15 @@ async function moveSingleToGroup(groupId: string | null) {
           
           <!-- 快捷操作 -->
           <div class="absolute top-3 right-3 flex gap-1 opacity-0 group-hover:opacity-100 transition-all duration-200">
-            <button class="p-2 bg-black/20 backdrop-blur-sm rounded-lg text-white hover:bg-black/30" title="预览">
+            <Button variant="ghost" class="p-2 bg-black/20 backdrop-blur-sm rounded-lg text-white hover:bg-black/30" title="预览">
               <Eye class="h-4 w-4" />
-            </button>
-            <button class="p-2 bg-black/20 backdrop-blur-sm rounded-lg text-white hover:bg-black/30" title="下载">
+            </Button>
+            <Button variant="ghost" class="p-2 bg-black/20 backdrop-blur-sm rounded-lg text-white hover:bg-black/30" title="下载">
               <Download class="h-4 w-4" />
-            </button>
-            <button class="p-2 bg-black/20 backdrop-blur-sm rounded-lg text-white hover:bg-black/30" title="更多">
+            </Button>
+            <Button variant="ghost" class="p-2 bg-black/20 backdrop-blur-sm rounded-lg text-white hover:bg-black/30" title="更多">
               <MoreVertical class="h-4 w-4" />
-            </button>
+            </Button>
           </div>
           
           <!-- 图片 -->
@@ -871,12 +849,13 @@ async function moveSingleToGroup(groupId: string | null) {
             :alt="previewImage.filename || previewImage.id"
             class="max-w-full max-h-full rounded-xl shadow-dramatic"
           />
-          <button
+          <Button
+            variant="ghost"
             @click="showPreview = false"
             class="absolute -top-4 -right-4 p-2 bg-white/10 backdrop-blur-sm rounded-full text-white hover:bg-white/20 transition-colors"
           >
             <X class="h-6 w-6" />
-          </button>
+          </Button>
           
           <!-- 图片信息 -->
           <div class="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-6 rounded-b-xl text-white">
@@ -970,14 +949,15 @@ async function moveSingleToGroup(groupId: string | null) {
       :style="{ left: Math.min(ctxX, window.innerWidth - 220) + 'px', top: Math.min(ctxY, window.innerHeight - 200) + 'px' }"
     >
       <div class="text-xs text-[hsl(var(--muted-foreground))] px-2 py-1">移动到分组</div>
-      <button class="w-full text-left px-2 py-1 hover:bg-[hsl(var(--muted))] rounded" @click="moveSingleToGroup(null)">未分组</button>
+      <Button variant="ghost" class="w-full justify-start px-2 py-1 hover:bg-[hsl(var(--muted))] rounded" @click="moveSingleToGroup(null)">未分组</Button>
       <div class="max-h-60 overflow-auto">
-        <button
+        <Button
           v-for="g in groups"
           :key="g.id"
-          class="w-full text-left px-2 py-1 hover:bg-[hsl(var(--muted))] rounded"
+          variant="ghost"
+          class="w-full justify-start px-2 py-1 hover:bg-[hsl(var(--muted))] rounded"
           @click="moveSingleToGroup(g.id)"
-        >{{ g.name }}</button>
+        >{{ g.name }}</Button>
       </div>
     </div>
       </section>

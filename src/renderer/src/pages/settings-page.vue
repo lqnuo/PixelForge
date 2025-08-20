@@ -119,18 +119,19 @@ onMounted(load)
         <aside class="border-r bg-[hsl(var(--card))] p-2">
           <div class="text-xs font-semibold text-[hsl(var(--muted-foreground))] px-2 py-2">模型供应商</div>
           <div class="space-y-1">
-            <button
+            <Button
               v-for="p in providers"
               :key="p"
+              variant="ghost"
               :class="[
-                'w-full flex items-center gap-3 px-3 py-2 rounded-md text-sm transition-colors',
+                'w-full flex items-center gap-3 px-3 py-2 rounded-md text-sm transition-colors justify-start',
                 active === p ? 'bg-[hsl(var(--primary))]/10 text-[hsl(var(--foreground))] border border-[hsl(var(--primary))]/30' : 'hover:bg-[hsl(var(--muted))]/50'
               ]"
               @click="active = p"
             >
               <span class="inline-block h-2 w-2 rounded-full" :class="active === p ? 'bg-[hsl(var(--primary))]' : 'bg-[hsl(var(--border))]'"></span>
               <span class="capitalize">{{ p }}</span>
-            </button>
+            </Button>
           </div>
         </aside>
 
