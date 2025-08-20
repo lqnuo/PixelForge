@@ -926,129 +926,7 @@ async function moveSingleToGroup(groupId: string | null) {
       </DialogPortal>
     </DialogRoot>
 
-    <!-- === 状态栏 === -->
-    <div class="px-6 py-3 border-b border-[hsl(var(--border))] bg-[hsl(var(--muted))]/20 flex items-center justify-between text-sm">
-      <div class="flex items-center gap-4">
-        <span class="text-[hsl(var(--foreground))] font-medium">{{ total }} 个素材</span>
-        <span v-if="searchQuery" class="text-[hsl(var(--muted-foreground))]">搜索: "{{ searchQuery }}"</span>
-      </div>
-      
-      <div class="flex items-center gap-3">
-        <label class="flex items-center gap-2 cursor-pointer hover:text-[hsl(var(--foreground))] transition-colors">
-          <input type="checkbox" @change="(e:any)=>toggleAllOnPage(e.target.checked)" class="rounded" />
-          <span>本页全选</span>
-        </label>
-      </div>
-    </div>
 
-    <!-- === 素材网格 === -->
-    <div class="flex-1 overflow-auto">
-      <div 
-        v-if="viewMode === 'grid'"
-        class="grid grid-cols-[repeat(auto-fill,minmax(200px,1fr))] gap-3 p-2 animate-fade-in"
-        @dragover.prevent="isDragging = true"
-        @dragenter.prevent="isDragging = true"
-        @dragleave="isDragging = false"
-      >
-        <!-- 空状态 -->
-        <div v-if="pageItems.length === 0 && !searchQuery" class="col-span-full flex flex-col items-center justify-center py-12 text-center">
-          <div class="dropzone-idle p-10 max-w-lg mx-auto">
-            <Upload class="h-16 w-16 mx-auto mb-6 text-[hsl(var(--muted-foreground))]" />
-            <h3 class="text-xl font-semibold mb-4 text-[hsl(var(--foreground))]">开始上传素材</h3>
-            <p class="text-[hsl(var(--muted-foreground))] mb-6 leading-relaxed">
-              拖拽图片到此处，或点击按钮选择文件
-            </p>
-            <label class="btn-primary cursor-pointer">
-              <Upload class="h-4 w-4" />
-              选择文件
-              <input type="file" multiple accept="image/*" class="hidden" @change="onInputChange" />
-            </label>
-          </div>
-        </div>
-        
-        <!-- 搜索无结果 -->
-        <div v-else-if="pageItems.length === 0 && searchQuery" class="col-span-full flex flex-col items-center justify-center py-16 text-center">
-          <AlertCircle class="h-16 w-16 mb-4 text-[hsl(var(--muted-foreground))]" />
-          <h3 class="text-lg font-semibold mb-2">未找到匹配的素材</h3>
-          <p class="text-[hsl(var(--muted-foreground))]">尝试修改搜索关键词或清除筛选条件</p>
-        </div>
-        
-        <!-- 图片卡片 -->
-        <div
-          v-for="(item, index) in pageItems"
-          :key="item.id"
-          class="card-interactive group relative overflow-hidden animate-scale-in"
-          :style="{ animationDelay: `${index * 50}ms` }"
-          @click="previewImage = item; showPreview = true"
-          @contextmenu.prevent="openContextMenu($event, item)"
-        >
-          <!-- 选择框 -->
-          <label class="absolute top-3 left-3 z-10 cursor-pointer" @click.stop>
-            <input
-              type="checkbox"
-              :checked="isChecked(item.id)"
-              @change="(e:any)=>toggle(item.id,e.target.checked)"
-              class="w-5 h-5 rounded border-2 border-white/50 bg-white/10 backdrop-blur-sm"
-            />
-          </label>
-          
-          <!-- 快捷操作 -->
-          <div class="absolute top-3 right-3 flex gap-1 opacity-0 group-hover:opacity-100 transition-all duration-200">
-            <Button variant="ghost" class="p-2 bg-black/20 backdrop-blur-sm rounded-lg text-white hover:bg-black/30" title="预览">
-              <Eye class="h-4 w-4" />
-            </Button>
-            <Button variant="ghost" class="p-2 bg-black/20 backdrop-blur-sm rounded-lg text-white hover:bg-black/30" title="下载">
-              <Download class="h-4 w-4" />
-            </Button>
-            <Button variant="ghost" class="p-2 bg-black/20 backdrop-blur-sm rounded-lg text-white hover:bg-black/30" title="更多">
-              <MoreVertical class="h-4 w-4" />
-            </Button>
-          </div>
-          
-          <!-- 图片 -->
-          <div class="aspect-square overflow-hidden rounded-t-xl">
-            <img
-              :src="dataUrl(item.mimeType, item.previewBase64)"
-              :alt="item.filename || item.id"
-              class="w-full h-full object-cover transition-transform duration-300 group-hover:scale-110"
-              loading="lazy"
-            />
-          </div>
-          
-          <!-- 信息区域 -->
-          <div class="p-1">
-            <h3 class="font-medium text-sm text-[hsl(var(--foreground))] truncate mb-1">
-              {{ item.filename || item.id }}
-            </h3>
-            <div class="flex items-center justify-between text-xs text-[hsl(var(--muted-foreground))]">
-              <span>{{ formatFileSize(item.sizeBytes) }}</span>
-              <span v-if="item.createdAt">{{ formatDate(item.createdAt) }}</span>
-            </div>
-          </div>
-          
-          <!-- 加载状态指示器 -->
-          <div v-if="!item.previewBase64" class="absolute inset-0 flex items-center justify-center bg-[hsl(var(--muted))]/50">
-            <div class="spinner h-6 w-6"></div>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- === 分页（shadcn-vue Pagination） === -->
-    <div v-if="pageCount > 1" class="px-6 py-3 border-t border-[hsl(var(--border))] bg-[hsl(var(--background))]">
-      <Pagination v-model:page="page" :total="total" :items-per-page="pageSize" :sibling-count="1" :show-edges="pageCount > 7">
-        <PaginationContent v-slot="{ items }">
-          <PaginationFirst v-if="pageCount > 7" />
-          <PaginationPrevious />
-          <template v-for="(p, idx) in items" :key="idx">
-            <PaginationItem v-if="p.type==='page'" :value="p.value" :is-active="p.value === page">{{ p.value }}</PaginationItem>
-            <PaginationEllipsis v-else :index="idx" />
-          </template>
-          <PaginationNext />
-          <PaginationLast v-if="pageCount > 7" />
-        </PaginationContent>
-      </Pagination>
-    </div>
 
     <!-- === 图片预览模态框 === -->
     <Teleport to="body">
@@ -1173,8 +1051,6 @@ async function moveSingleToGroup(groupId: string | null) {
           @click="moveSingleToGroup(g.id)"
         >{{ g.name }}</Button>
       </div>
-    </div>
-      </section>
     </div>
   </div>
 </template>
