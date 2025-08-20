@@ -441,6 +441,7 @@ body { background-color: hsl(var(--background)); color: hsl(var(--foreground)); 
   gap: 1rem; 
   border-radius: var(--radius-lg); 
   padding: 1rem 1.25rem; 
+  height: auto; /* override shadcn button fixed height */
   font-size: 0.875rem; 
   font-weight: 500;
   color: hsl(var(--text-secondary));
