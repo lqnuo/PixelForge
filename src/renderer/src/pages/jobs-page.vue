@@ -111,7 +111,7 @@ async function downloadFirstResult(jobId: string) {
 // === TanStack Table ===
 const columnHelper = createColumnHelper<TableRow>()
 
-const columns: ColumnDef<TableRow, any>[] = [
+  const columns: ColumnDef<TableRow, any>[] = [
   {
     id: 'select',
     header: () =>
@@ -135,16 +135,23 @@ const columns: ColumnDef<TableRow, any>[] = [
     cell: ({ row }) => {
       const img = imageMap.value.get(row.original.sourceImageId)
       const src = img?.previewBase64 ? dataUrl(img!.mimeType, img!.previewBase64) : ''
-      return h(
-        'div',
-        { class: 'flex items-center gap-2' },
-        [
-          img?.previewBase64
-            ? h('img', { src, class: 'h-10 w-10 object-cover rounded' })
-            : h('div', { class: 'h-10 w-10 rounded bg-[hsl(var(--muted))]' }),
-          h('div', { class: 'line-clamp-1' }, img?.filename || row.original.sourceImageId),
-        ]
-      )
+      const thumb = img?.previewBase64
+        ? h('img', { src, class: 'h-10 w-10 object-cover rounded' })
+        : h('div', { class: 'h-10 w-10 rounded bg-[hsl(var(--muted))]' })
+      const preview = img?.previewBase64
+        ? h(
+            'div',
+            {
+              class:
+                'absolute left-0 top-full mt-2 hidden group-hover:block z-50 p-2 bg-[hsl(var(--card))] border border-[hsl(var(--border))] rounded-lg shadow-xl',
+            },
+            [h('img', { src, class: 'max-w-80 max-h-80 object-contain rounded' })]
+          )
+        : null
+      return h('div', { class: 'flex items-center gap-2' }, [
+        h('div', { class: 'relative inline-block group' }, [thumb, preview]),
+        h('div', { class: 'line-clamp-1' }, img?.filename || row.original.sourceImageId),
+      ])
     },
   }),
   {
@@ -152,9 +159,19 @@ const columns: ColumnDef<TableRow, any>[] = [
     header: '生成图片',
     cell: ({ row }) => {
       const r = row.original.firstResult
-      return r
-        ? h('img', { src: dataUrl(r.mimeType, r.previewBase64), class: 'h-10 w-10 object-cover rounded' })
-        : h('span', { class: 'text-neutral-400' }, '—')
+      if (!r) return h('span', { class: 'text-neutral-400' }, '—')
+      const src = dataUrl(r.mimeType, r.previewBase64)
+      return h('div', { class: 'relative inline-block group' }, [
+        h('img', { src, class: 'h-10 w-10 object-cover rounded' }),
+        h(
+          'div',
+          {
+            class:
+              'absolute left-0 top-full mt-2 hidden group-hover:block z-50 p-2 bg-[hsl(var(--card))] border border-[hsl(var(--border))] rounded-lg shadow-xl',
+          },
+          [h('img', { src, class: 'max-w-80 max-h-80 object-contain rounded' })]
+        ),
+      ])
     },
     size: 80,
     enableSorting: false,

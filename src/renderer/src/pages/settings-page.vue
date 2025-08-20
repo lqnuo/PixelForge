@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { reactive, ref, onMounted, computed } from 'vue'
+import { toastManager } from '@/composables/useToast'
 
 const bridge: any = (window as any)?.api
 
@@ -74,6 +75,7 @@ async function load() {
 async function save() {
   if (!bridge?.config) return
   saving.value = true
+  savedHint.value = ''
   try {
     if (active.value === 'qwen') {
       await bridge.config.set('dashscope_api_key', String(form.qwen.apiKey || '').trim())
@@ -89,7 +91,10 @@ async function save() {
       await bridge.config.set('deepseek_image_model', String(form.deepseek.imageModel || '').trim())
     }
     savedHint.value = '已保存'
+    toastManager.success('保存成功')
     setTimeout(() => (savedHint.value = ''), 1500)
+  } catch (e) {
+    toastManager.error('保存失败，请重试')
   } finally {
     saving.value = false
   }
@@ -102,7 +107,6 @@ onMounted(load)
   <div class="h-full flex flex-col">
     <div class="toolbar flex items-center justify-between">
       <div class="text-base font-semibold">设置</div>
-      <div class="text-xs text-[hsl(var(--muted-foreground))]">不发起请求，仅做多模型配置</div>
     </div>
 
     <div class="flex-1 overflow-hidden">
@@ -195,7 +199,9 @@ onMounted(load)
             </template>
 
             <div class="flex items-center gap-3 pt-2">
-              <button class="btn" :disabled="saving" @click="save">保存当前 Tab</button>
+              <button class="btn disabled:opacity-60" :disabled="saving" @click="save">
+                {{ saving ? '保存中…' : '保存当前 Tab' }}
+              </button>
               <span v-if="savedHint" class="text-xs text-green-600">{{ savedHint }}</span>
             </div>
           </div>
