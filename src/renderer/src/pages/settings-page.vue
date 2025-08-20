@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { reactive, ref, onMounted, computed } from 'vue'
-import { toastManager } from '@/composables/useToast'
+import { toast } from 'vue-sonner'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select'
@@ -95,10 +95,10 @@ async function save() {
       await bridge.config.set('deepseek_image_model', String(form.deepseek.imageModel || '').trim())
     }
     savedHint.value = '已保存'
-    toastManager.success('保存成功')
+    toast.success('保存成功')
     setTimeout(() => (savedHint.value = ''), 1500)
   } catch (e) {
-    toastManager.error('保存失败，请重试')
+    toast.error('保存失败，请重试')
   } finally {
     saving.value = false
   }

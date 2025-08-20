@@ -7,7 +7,6 @@ import { Button } from '@/components/ui/button'
 import { Select, SelectTrigger, SelectContent, SelectItem, SelectValue } from '@/components/ui/select'
 import { Input } from '@/components/ui/input'
 import Pagination from '@/components/ui/Pagination.vue'
-import { toastManager } from '@/composables/useToast'
 import type { ImageItem, StyleItem, GroupItem } from '@/types'
 
 const bridge: any = (window as any)?.api

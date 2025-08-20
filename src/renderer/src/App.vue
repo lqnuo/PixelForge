@@ -2,18 +2,16 @@
 import { ref, computed, onMounted } from 'vue'
 import { Images, ListChecks, Moon, Sun, Monitor, Settings, User, LogOut } from 'lucide-vue-next'
 import { useTheme } from './composables/useTheme'
-import { toastManager } from './composables/useToast'
+import { Toaster } from 'vue-sonner'
 import UploadsPage from './pages/uploads-page.vue'
 import JobsPage from './pages/jobs-page.vue'
 import SettingsPage from './pages/settings-page.vue'
-import Toast from './components/ui/Toast.vue'
+// Removed custom Toast in favor of vue-sonner Toaster
 import { Button } from '@/components/ui/button'
 
 const tab = ref<'uploads' | 'jobs' | 'settings'>('uploads')
 const { currentTheme, isDark, themeIcon, themeLabel, toggleTheme } = useTheme()
 
-// Toast实例引用
-const toastRef = ref<any>(null)
 
 // 页面切换动画状态
 const isTransitioning = ref(false)
@@ -71,11 +69,6 @@ onMounted(() => {
     document.body.style.transition = 'opacity 0.3s ease'
     document.body.style.opacity = '1'
   }, 100)
-  
-  // 初始化Toast管理器
-  if (toastRef.value) {
-    toastManager.setToastInstance(toastRef.value)
-  }
 })
 </script>
 
@@ -170,8 +163,8 @@ onMounted(() => {
       </div>
     </main>
 
-    <!-- === 全局Toast组件 === -->
-    <Toast ref="toastRef" />
+    <!-- === Global Toaster (shadcn-vue Sonner) === -->
+    <Toaster position="top-right" rich-colors />
   </div>
 </template>
 
