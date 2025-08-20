@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { StyleItem } from '@/types'
+import { Button } from '@/components/ui/button'
 
 const props = defineProps<{
   styles: StyleItem[]
@@ -34,33 +35,31 @@ const emit = defineEmits<{
     <div>
       <div class="text-sm mb-2">风格预设</div>
       <div class="flex flex-wrap gap-2">
-        <button
+        <Button
           v-for="s in styles"
           :key="s.id"
-          class="btn"
-          :class="selectedStyleId === s.id ? 'btn-primary' : 'btn-outline'"
+          :variant="selectedStyleId === s.id ? 'default' : 'outline'"
           @click="emit('update:selectedStyleId', s.id)"
-        >{{ s.name }}</button>
+        >{{ s.name }}</Button>
       </div>
     </div>
     <div>
       <div class="text-sm mb-2">尺寸比例</div>
       <div class="flex gap-2">
-        <button
+        <Button
           v-for="a in ['1:1','3:4']"
           :key="a"
-          class="btn"
-          :class="aspect === a ? 'btn-primary' : 'btn-outline'"
+          :variant="aspect === a ? 'default' : 'outline'"
           @click="emit('update:aspect', a as any)"
-        >{{ a }}</button>
+        >{{ a }}</Button>
       </div>
     </div>
     </div>
     <div class="p-4 border-t">
-      <button class="btn btn-primary w-full" :disabled="isGenerating" @click="emit('generate')">
+      <Button class="w-full" :disabled="isGenerating" @click="emit('generate')">
         <span v-if="isGenerating" class="inline-block h-3 w-3 mr-2 align-[-2px] border-2 border-current border-t-transparent rounded-full animate-spin"></span>
         {{ isGenerating ? '生成中…' : '开始生成' }}
-      </button>
+      </Button>
     </div>
   </div>
 </template>

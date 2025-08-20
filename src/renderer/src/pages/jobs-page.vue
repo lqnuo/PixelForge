@@ -3,6 +3,8 @@ import { onMounted, ref, computed, watch, h } from 'vue'
 import type { ImageItem } from '@/types'
 import Pagination from '@/components/ui/Pagination.vue'
 import { createColumnHelper, FlexRender, getCoreRowModel, useVueTable, type ColumnDef } from '@tanstack/vue-table'
+import { Button } from '@/components/ui/button'
+import { Select, SelectTrigger, SelectContent, SelectItem, SelectValue } from '@/components/ui/select'
 
 const bridge: any = (window as any)?.api
 
@@ -204,22 +206,8 @@ const columnHelper = createColumnHelper<TableRow>()
     header: '操作',
     cell: ({ row }) =>
       h('div', { class: 'flex gap-1' }, [
-        h(
-          'button',
-          {
-            class: 'btn btn-outline !px-2 !py-1',
-            onClick: () => bridge.job.retry(row.original.id),
-          },
-          '重试'
-        ),
-        h(
-          'button',
-          {
-            class: 'btn btn-outline !px-2 !py-1',
-            onClick: () => downloadFirstResult(row.original.id),
-          },
-          '下载'
-        ),
+        h(Button as any, { variant: 'outline', class: '!px-2 !py-1', onClick: () => bridge.job.retry(row.original.id) }, { default: () => '重试' }),
+        h(Button as any, { variant: 'outline', class: '!px-2 !py-1', onClick: () => downloadFirstResult(row.original.id) }, { default: () => '下载' }),
       ]),
     enableSorting: false,
   },
@@ -238,17 +226,20 @@ const table = useVueTable<TableRow>({
   <div class="h-full flex flex-col">
     <div class="toolbar flex items-center justify-between px-3 py-2">
       <div class="flex items-center gap-2">
-        <button class="btn btn-outline" :disabled="selected.size===0" @click="retrySelected">重试所选</button>
+        <Button variant="outline" :disabled="selected.size===0" @click="retrySelected">重试所选</Button>
       </div>
       <div class="flex items-center gap-3">
         <span class="text-xs px-2 py-1 rounded bg-[hsl(var(--muted))] text-[hsl(var(--muted-foreground))]">共 {{ total }} 个任务</span>
-        <select v-model="statusFilter" @change="fetchJobs" class="select min-w-28">
-          <option :value="null">全部状态</option>
-          <option value="queued">排队中</option>
-          <option value="processing">处理中</option>
-          <option value="done">已完成</option>
-          <option value="failed">失败</option>
-        </select>
+        <Select v-model="(statusFilter as any)" @update:modelValue="fetchJobs">
+          <SelectTrigger class="min-w-28"><SelectValue placeholder="全部状态" /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="">全部状态</SelectItem>
+            <SelectItem value="queued">排队中</SelectItem>
+            <SelectItem value="processing">处理中</SelectItem>
+            <SelectItem value="done">已完成</SelectItem>
+            <SelectItem value="failed">失败</SelectItem>
+          </SelectContent>
+        </Select>
       </div>
     </div>
 

@@ -1,7 +1,10 @@
 <script setup lang="ts">
 import { onMounted, ref, computed, watch, nextTick } from 'vue'
-import { Search, Filter, Grid3X3, Grid, Upload, Trash2, Sparkles, Eye, Download, MoreVertical, X, Check, AlertCircle, Pencil } from 'lucide-vue-next'
+import { Search, Grid3X3, Grid, Upload, Trash2, Sparkles, Eye, Download, MoreVertical, X, Check, AlertCircle, Pencil, Filter as FilterIcon } from 'lucide-vue-next'
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion'
 import { DialogRoot, DialogTrigger, DialogPortal, DialogOverlay, DialogContent, DialogTitle, DialogDescription, DialogClose } from 'reka-ui'
+import { Button } from '@/components/ui/button'
+import { Select, SelectTrigger, SelectContent, SelectItem, SelectValue } from '@/components/ui/select'
 import Pagination from '@/components/ui/Pagination.vue'
 import { toastManager } from '@/composables/useToast'
 import type { ImageItem, StyleItem, GroupItem } from '@/types'
@@ -19,6 +22,10 @@ const selected = ref<Set<string>>(new Set())
 const selectedStyleId = ref<string | null>(null)
 const currentGroupId = ref<string | null>(null)
 const moveTargetGroupId = ref<string | null>(null)
+const moveTargetGroupIdStr = computed({
+  get: () => (moveTargetGroupId.value === null ? '' : String(moveTargetGroupId.value)),
+  set: (v: string) => { moveTargetGroupId.value = v === '' ? null : v }
+})
 
 // 分组对话框状态
 const createOpen = ref(false)
@@ -47,7 +54,7 @@ const page = ref(1)
 const pageSize = ref(24)
 
 // === 高级筛选状态 ===
-const showFilters = ref(false)
+// 使用 shadcn-vue Accordion 替换原有筛选折叠逻辑
 const filterMinSize = ref(0)
 const filterMaxSize = ref(0)
 const filterDateRange = ref<{ start: string, end: string }>({ start: '', end: '' })
@@ -543,10 +550,10 @@ async function moveSingleToGroup(groupId: string | null) {
           <div class="flex items-center gap-4">
             <!-- 上传按钮 -->
             <label class="cursor-pointer">
-              <div class="btn-primary flex items-center gap-2">
+              <Button class="flex items-center gap-2 pointer-events-none">
                 <Upload class="h-4 w-4" />
                 <span>上传素材</span>
-              </div>
+              </Button>
               <input type="file" multiple accept="image/*" class="hidden" @change="onInputChange" />
             </label>
             
@@ -554,16 +561,19 @@ async function moveSingleToGroup(groupId: string | null) {
             <div v-if="selected.size > 0" class="flex items-center gap-2 animate-scale-in">
               <div class="badge-info px-3 py-1">{{ selected.size }} 项已选</div>
               <div class="flex items-center gap-2">
-                <select v-model="moveTargetGroupId" class="select-base min-w-[160px]">
-                  <option :value="null">移动到：无分组</option>
-                  <option v-for="g in groups" :key="g.id" :value="g.id">{{ g.name }}</option>
-                </select>
-                <button class="btn" @click="moveSelectedToGroup">确定</button>
+                <Select v-model="moveTargetGroupIdStr">
+                  <SelectTrigger class="min-w-[160px]"><SelectValue placeholder="移动到：无分组" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="">移动到：无分组</SelectItem>
+                    <SelectItem v-for="g in groups" :key="g.id" :value="String(g.id)">{{ g.name }}</SelectItem>
+                  </SelectContent>
+                </Select>
+                <Button @click="moveSelectedToGroup">确定</Button>
               </div>
-              <button class="btn-danger" @click="bulkDeleteOpen = true">
+              <Button variant="destructive" @click="bulkDeleteOpen = true">
                 <Trash2 class="h-4 w-4" />
                 <span>删除所选</span>
-              </button>
+              </Button>
             </div>
           </div>
           
@@ -598,57 +608,72 @@ async function moveSingleToGroup(groupId: string | null) {
             <!-- 视图切换 -->
             <div class="segmented">
               <button
-                :class="['segmented-item', { 'data-[active=true]': viewMode === 'grid' }]"
+                :class="['segmented-item', { 'is-active': viewMode === 'grid' }]"
                 @click="viewMode = 'grid'"
               >
                 <Grid3X3 class="h-4 w-4" />
               </button>
               <button
-                :class="['segmented-item', { 'data-[active=true]': viewMode === 'list' }]"
+                :class="['segmented-item', { 'is-active': viewMode === 'list' }]"
                 @click="viewMode = 'list'"
               >
                 <Grid class="h-4 w-4" />
               </button>
             </div>
             
-            <!-- 高级筛选 -->
-            <button
-              :class="['btn-ghost', showFilters ? 'bg-[hsl(var(--accent))]' : '']"
-              @click="showFilters = !showFilters"
-            >
-              <Filter class="h-4 w-4" />
-            </button>
+            <!-- 高级筛选：由 Accordion 控制展开/收起 -->
           </div>
         </div>
 
-    <!-- === 高级筛选面板 === -->
-    <div v-if="showFilters" class="glass-panel p-4 m-4 rounded-xl animate-slide-in-from-top">
-      <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <div>
-          <label class="block text-sm font-medium mb-2">排序方式</label>
-          <select v-model="sortBy" class="select-base">
-            <option value="date">按日期</option>
-            <option value="name">按名称</option>
-            <option value="size">按大小</option>
-          </select>
-        </div>
-        <div>
-          <label class="block text-sm font-medium mb-2">排序顺序</label>
-          <select v-model="sortOrder" class="select-base">
-            <option value="desc">降序</option>
-            <option value="asc">升序</option>
-          </select>
-        </div>
-        <div>
-          <label class="block text-sm font-medium mb-2">每页显示</label>
-          <select v-model.number="pageSize" class="select-base">
-            <option :value="12">12项</option>
-            <option :value="24">24项</option>
-            <option :value="48">48项</option>
-          </select>
-        </div>
-      </div>
-    </div>
+    <!-- === 高级筛选面板（Accordion） === -->
+    <Accordion type="single" collapsible class="m-4">
+      <AccordionItem value="filters">
+        <AccordionTrigger class="px-3 py-2 rounded-lg border border-[hsl(var(--border))] bg-[hsl(var(--card))] text-left">
+          <div class="flex items-center gap-2">
+            <FilterIcon class="h-4 w-4" />
+            <span class="text-sm font-medium">高级筛选</span>
+          </div>
+        </AccordionTrigger>
+        <AccordionContent>
+          <div class="glass-panel p-4 rounded-xl animate-slide-in-from-top">
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div>
+                <label class="block text-sm font-medium mb-2">排序方式</label>
+                <Select v-model="sortBy">
+                  <SelectTrigger><SelectValue placeholder="按日期" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="date">按日期</SelectItem>
+                    <SelectItem value="name">按名称</SelectItem>
+                    <SelectItem value="size">按大小</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <label class="block text-sm font-medium mb-2">排序顺序</label>
+                <Select v-model="sortOrder">
+                  <SelectTrigger><SelectValue placeholder="降序" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="desc">降序</SelectItem>
+                    <SelectItem value="asc">升序</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <label class="block text-sm font-medium mb-2">每页显示</label>
+                <Select v-model="(pageSize as any)">
+                  <SelectTrigger><SelectValue placeholder="24项" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="12">12项</SelectItem>
+                    <SelectItem value="24">24项</SelectItem>
+                    <SelectItem value="48">48项</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+          </div>
+        </AccordionContent>
+      </AccordionItem>
+    </Accordion>
 
     <!-- === 生成操作条（点击后弹出确认框） === -->
     <div v-if="selected.size > 0" class="bg-gradient-to-r from-[hsl(var(--primary))]/5 to-[hsl(var(--accent))]/5 border-y border-[hsl(var(--border))] py-2 px-4 animate-slide-in-from-bottom">
@@ -657,11 +682,11 @@ async function moveSingleToGroup(groupId: string | null) {
           <Sparkles class="h-5 w-5 text-[hsl(var(--primary))]" />
           <span class="font-medium">已选择 {{ selected.size }} 项</span>
         </div>
-        <button class="btn-primary" :disabled="isGenerating" @click="confirmOpen = true">
+        <Button :disabled="isGenerating" @click="confirmOpen = true">
           <span v-if="isGenerating" class="spinner mr-2"></span>
           <Sparkles v-else class="w-4 h-4 mr-1" />
           生成
-        </button>
+        </Button>
       </div>
     </div>
 
@@ -694,11 +719,11 @@ async function moveSingleToGroup(groupId: string | null) {
             <div class="text-sm mb-2">尺寸比例</div>
             <div class="segmented">
               <button
-                :class="['segmented-item', { 'data-[active=true]': aspect === '1:1' }]"
+                :class="['segmented-item', { 'is-active': aspect === '1:1' }]"
                 @click="aspect = '1:1'"
               >1:1 正方形</button>
               <button
-                :class="['segmented-item', { 'data-[active=true]': aspect === '3:4' }]"
+                :class="['segmented-item', { 'is-active': aspect === '3:4' }]"
                 @click="aspect = '3:4'"
               >3:4 竖版</button>
             </div>
@@ -706,12 +731,12 @@ async function moveSingleToGroup(groupId: string | null) {
 
           <div class="flex items-center justify-end gap-2 pt-2 border-t">
             <DialogClose as-child>
-              <button class="btn btn-outline">取消</button>
+              <Button variant="outline">取消</Button>
             </DialogClose>
-            <button class="btn btn-primary" :disabled="!selectedStyleId || isGenerating" @click="generateSelected">
+            <Button :disabled="!selectedStyleId || isGenerating" @click="generateSelected">
               <span v-if="isGenerating" class="spinner mr-2"></span>
               确认生成
-            </button>
+            </Button>
           </div>
         </DialogContent>
       </DialogPortal>
@@ -878,9 +903,9 @@ async function moveSingleToGroup(groupId: string | null) {
           <input v-model="createName" class="input-base w-full" placeholder="分组名称" @keyup.enter="submitCreateGroup" />
           <div class="flex items-center justify-end gap-2 mt-4">
             <DialogClose as-child>
-              <button class="btn btn-outline">取消</button>
+              <Button variant="outline">取消</Button>
             </DialogClose>
-            <button class="btn btn-primary" :disabled="!createName.trim()" @click="submitCreateGroup">创建</button>
+            <Button :disabled="!createName.trim()" @click="submitCreateGroup">创建</Button>
           </div>
         </DialogContent>
       </DialogPortal>
@@ -896,9 +921,9 @@ async function moveSingleToGroup(groupId: string | null) {
           <input v-model="renameName" class="input-base w-full" placeholder="新名称" @keyup.enter="submitRenameGroup" />
           <div class="flex items-center justify-end gap-2 mt-4">
             <DialogClose as-child>
-              <button class="btn btn-outline">取消</button>
+              <Button variant="outline">取消</Button>
             </DialogClose>
-            <button class="btn btn-primary" :disabled="!renameName.trim()" @click="submitRenameGroup">保存</button>
+            <Button :disabled="!renameName.trim()" @click="submitRenameGroup">保存</Button>
           </div>
         </DialogContent>
       </DialogPortal>
@@ -915,9 +940,9 @@ async function moveSingleToGroup(groupId: string | null) {
           </DialogDescription>
           <div class="flex items-center justify-end gap-2 mt-2">
             <DialogClose as-child>
-              <button class="btn btn-outline">取消</button>
+              <Button variant="outline">取消</Button>
             </DialogClose>
-            <button class="btn btn-danger" @click="submitDeleteGroup">删除</button>
+            <Button variant="destructive" @click="submitDeleteGroup">删除</Button>
           </div>
         </DialogContent>
       </DialogPortal>
@@ -934,9 +959,9 @@ async function moveSingleToGroup(groupId: string | null) {
           </DialogDescription>
           <div class="flex items-center justify-end gap-2 mt-2">
             <DialogClose as-child>
-              <button class="btn btn-outline">取消</button>
+              <Button variant="outline">取消</Button>
             </DialogClose>
-            <button class="btn btn-danger" @click="submitBulkDelete">删除</button>
+            <Button variant="destructive" @click="submitBulkDelete">删除</Button>
           </div>
         </DialogContent>
       </DialogPortal>

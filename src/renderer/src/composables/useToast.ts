@@ -1,5 +1,4 @@
 import { ref } from 'vue'
-import type { ToastItem } from '@/components/ui/Toast.vue'
 
 // 全局Toast实例引用
 const toastInstance = ref<any>(null)

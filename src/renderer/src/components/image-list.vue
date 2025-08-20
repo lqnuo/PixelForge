@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, watch } from 'vue'
 import { GripVertical } from 'lucide-vue-next'
+import { Button } from '@/components/ui/button'
 import { VueDraggableNext as Draggable } from 'vue-draggable-next'
 import type { ImageItem } from '@/types'
 
@@ -68,7 +69,7 @@ async function onInputChange(evt: Event) {
     <div class="sticky top-0 z-10 bg-[hsl(var(--background))] border-b p-3 flex items-center justify-between">
       <div class="font-semibold">待处理</div>
       <label class="cursor-pointer">
-        <button class="btn btn-primary pointer-events-none">上传</button>
+        <Button class="pointer-events-none">上传</Button>
         <input type="file" multiple accept="image/*" class="hidden" @change="onInputChange" />
       </label>
     </div>
@@ -99,7 +100,7 @@ async function onInputChange(evt: Event) {
     <div v-if="list.length === 0" class="text-sm text-neutral-500 p-3">请先上传图片（支持拖拽）</div>
 
     <div class="p-3 border-t">
-      <button class="btn btn-outline w-full" :disabled="!selectedImageId" @click="emit('deleteSelected')">删除所选</button>
+      <Button variant="outline" class="w-full" :disabled="!selectedImageId" @click="emit('deleteSelected')">删除所选</Button>
     </div>
   </div>
 </template>
