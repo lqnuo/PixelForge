@@ -1,8 +1,8 @@
 <script setup lang="ts">
-import { onMounted, ref, computed, watch, nextTick } from 'vue'
-import { Search, Grid3X3, Grid, Upload, Trash2, Sparkles, Eye, Download, MoreVertical, X, Check, AlertCircle, Pencil, Filter as FilterIcon } from 'lucide-vue-next'
+import { onMounted, ref, computed, watch } from 'vue'
+import { Search, Grid3X3, Grid, Upload, Trash2, Sparkles, Eye, Download, MoreVertical, X, Check, AlertCircle, Pencil, Filter as FilterIcon, Plus, Folder } from 'lucide-vue-next'
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion'
-import { DialogRoot, DialogTrigger, DialogPortal, DialogOverlay, DialogContent, DialogTitle, DialogDescription, DialogClose } from 'reka-ui'
+import { DialogRoot, DialogPortal, DialogOverlay, DialogContent, DialogTitle, DialogDescription, DialogClose } from 'reka-ui'
 import { Button } from '@/components/ui/button'
 import { Select, SelectTrigger, SelectContent, SelectItem, SelectValue } from '@/components/ui/select'
 import { Input } from '@/components/ui/input'
@@ -39,8 +39,6 @@ const deleteTarget = ref<GroupItem | null>(null)
 // === UI状态 ===
 const isGenerating = ref(false)
 const isDragging = ref(false)
-const isUploading = ref(false)
-const uploadProgress = ref(0)
 const searchQuery = ref('')
 const sortBy = ref<'name' | 'date' | 'size'>('date')
 const sortOrder = ref<'asc' | 'desc'>('desc')
@@ -58,7 +56,6 @@ const pageSizeStr = computed({ get: () => String(pageSize.value), set: (v: strin
 // 使用 shadcn-vue Accordion 替换原有筛选折叠逻辑
 const filterMinSize = ref(0)
 const filterMaxSize = ref(0)
-const filterDateRange = ref<{ start: string, end: string }>({ start: '', end: '' })
 
 // === 预览状态 ===
 const previewImage = ref<ImageItem | null>(null)
@@ -439,236 +436,449 @@ async function moveSingleToGroup(groupId: string | null) {
 </script>
 
 <template>
-  <div class="h-full flex flex-col bg-[hsl(var(--background))] animate-fade-in">
-    <!-- === 智能拖拽上传区域 === -->
+  <div class="h-full flex flex-col bg-gradient-to-br from-[hsl(var(--background))] to-[hsl(var(--surface-secondary))] animate-fade-in overflow-hidden">
+    <!-- === 智能拖拽上传区域重设计 === -->
     <div 
       :class="[
-        'absolute inset-0 z-50 flex items-center justify-center transition-all duration-300',
-        isDragging ? 'opacity-100 visible' : 'opacity-0 invisible'
+        'fixed inset-0 z-50 flex items-center justify-center transition-all duration-500',
+        isDragging ? 'opacity-100 visible backdrop-blur-xl' : 'opacity-0 invisible pointer-events-none'
       ]"
       @dragover.prevent
       @dragenter.prevent
       @dragleave="isDragging = false"
       @drop="onDropFiles"
     >
-      <div class="dropzone-active p-12 rounded-2xl text-center max-w-md mx-auto">
-        <Upload class="h-16 w-16 mx-auto mb-4 text-[hsl(var(--primary))] animate-bounce-subtle" />
-        <h3 class="text-xl font-semibold mb-2 text-[hsl(var(--foreground))]">释放以上传文件</h3>
-        <p class="text-[hsl(var(--muted-foreground))]">支持 JPG、PNG、WebP 等格式</p>
+      <div class="dropzone-active p-16 rounded-3xl text-center max-w-2xl mx-auto shadow-dramatic border-2 border-[hsl(var(--primary))] bg-[hsl(var(--surface-primary))]/90 backdrop-blur-xl">
+        <div class="relative mb-8">
+          <Upload class="h-24 w-24 mx-auto text-[hsl(var(--primary))] animate-float" />
+          <div class="absolute inset-0 h-24 w-24 mx-auto bg-[hsl(var(--primary))]/20 rounded-full animate-ping"></div>
+        </div>
+        <h3 class="text-2xl font-bold mb-3 text-[hsl(var(--text-primary))] text-gradient">释放以上传创意素材</h3>
+        <p class="text-[hsl(var(--text-secondary))] text-lg mb-6">支持 JPG、PNG、WebP、HEIC 等多种格式</p>
+        <div class="flex items-center justify-center gap-6 text-sm text-[hsl(var(--text-tertiary))]">
+          <div class="flex items-center gap-2">
+            <div class="h-2 w-2 rounded-full bg-emerald-500"></div>
+            <span>智能批量处理</span>
+          </div>
+          <div class="flex items-center gap-2">
+            <div class="h-2 w-2 rounded-full bg-blue-500"></div>
+            <span>自动分组管理</span>
+          </div>
+          <div class="flex items-center gap-2">
+            <div class="h-2 w-2 rounded-full bg-purple-500"></div>
+            <span>AI 风格增强</span>
+          </div>
+        </div>
       </div>
     </div>
 
-    <!-- === 左侧分组 + 右侧素材 === -->
-    <div class="flex-1 min-h-0 flex">
-      <!-- 左侧分组列表 -->
-      <aside class="w-64 shrink-0 border-r border-[hsl(var(--border))] p-1">
-        <div class="flex items-center justify-between mb-2">
-          <div class="text-sm font-medium">分组</div>
-          <Button variant="outline" @click="openCreateGroup">新建</Button>
-        </div>
-        <ul class="space-y-1">
-          <li>
-            <div
-              :class="[
-                'w-full group flex items-center justify-between',
-                currentGroupId === null ? 'nav-item-active' : 'nav-item-base'
-              ]"
-            >
-              <Button
-                variant="ghost"
-                class="flex-1 text-left flex items-center gap-2"
-                @click="currentGroupId = null"
-              >
-                <div class="h-2 w-2 rounded-full bg-[hsl(var(--primary))] opacity-60"></div>
-                <span>所有分组</span>
-              </Button>
-              <span class="text-xs px-2 py-0.5 rounded bg-[hsl(var(--muted))] text-[hsl(var(--muted-foreground))]">
-                {{ allCount }}
-              </span>
+    <!-- === 重新设计的双栏布局 === -->
+    <div class="flex-1 min-h-0 flex gap-6 p-6">
+      <!-- 左侧分组管理面板 -->
+      <aside class="w-80 shrink-0 space-y-6">
+        <!-- 分组管理头部 -->
+        <div class="flex items-center justify-between">
+          <div class="flex items-center gap-3">
+            <div class="h-8 w-8 rounded-lg bg-gradient-to-br from-[hsl(var(--primary))] to-[hsl(var(--accent))] flex items-center justify-center">
+              <component :is="Grid3X3" class="h-4 w-4 text-white" />
             </div>
-          </li>
-          <li v-for="g in groups" :key="g.id">
-            <div
-              :class="[
-                'w-full group flex items-center justify-between',
-                currentGroupId === g.id ? 'nav-item-active' : 'nav-item-base'
-              ]"
-            >
-              <Button
-                variant="ghost"
-                class="flex-1 text-left flex items-center gap-2"
-                @click="currentGroupId = g.id"
-              >
-                <div class="h-2 w-2 rounded-full bg-[hsl(var(--primary))] opacity-60"></div>
-                <span class="truncate">{{ g.name }}</span>
+            <div>
+              <h2 class="text-lg font-bold text-[hsl(var(--text-primary))]">素材分组</h2>
+              <p class="text-xs text-[hsl(var(--text-tertiary))]">智能管理你的创意资源</p>
+            </div>
+          </div>
+          <Button variant="outline" class="btn-primary text-sm" @click="openCreateGroup">
+            <component :is="Plus" class="h-4 w-4 mr-2" />
+            新建分组
+          </Button>
+        </div>
+
+        <!-- 分组列表容器 -->
+        <div class="card-elevated p-6 space-y-3 max-h-[70vh] overflow-y-auto">
+          <!-- 所有分组项 -->
+          <div
+            :class="[
+              'group flex items-center justify-between p-4 rounded-xl transition-all duration-300 cursor-pointer border-2',
+              currentGroupId === null 
+                ? 'bg-gradient-to-r from-[hsl(var(--primary))]/10 to-[hsl(var(--accent))]/10 border-[hsl(var(--primary))]/30' 
+                : 'border-transparent hover:bg-[hsl(var(--surface-secondary))] hover:border-[hsl(var(--border-subtle))]'
+            ]"
+            @click="currentGroupId = null"
+          >
+            <div class="flex items-center gap-3">
+              <div class="relative">
+                <div class="h-10 w-10 rounded-xl bg-gradient-to-br from-slate-500 to-slate-600 flex items-center justify-center shadow-floating">
+                  <component :is="Grid3X3" class="h-5 w-5 text-white" />
+                </div>
+                <div v-if="currentGroupId === null" class="absolute -top-1 -right-1 h-3 w-3 bg-[hsl(var(--primary))] rounded-full animate-pulse"></div>
+              </div>
+              <div>
+                <div class="font-semibold text-[hsl(var(--text-primary))]">所有分组</div>
+                <div class="text-xs text-[hsl(var(--text-tertiary))]">查看全部素材</div>
+              </div>
+            </div>
+            <div class="badge-primary">{{ allCount }}</div>
+          </div>
+          <!-- 自定义分组列表 -->
+          <div v-for="g in groups" :key="g.id"
+            :class="[
+              'group flex items-center justify-between p-4 rounded-xl transition-all duration-300 cursor-pointer border-2',
+              currentGroupId === g.id 
+                ? 'bg-gradient-to-r from-[hsl(var(--primary))]/10 to-[hsl(var(--accent))]/10 border-[hsl(var(--primary))]/30' 
+                : 'border-transparent hover:bg-[hsl(var(--surface-secondary))] hover:border-[hsl(var(--border-subtle))]'
+            ]"
+            @click="currentGroupId = g.id"
+          >
+            <div class="flex items-center gap-3 flex-1 min-w-0">
+              <div class="relative">
+                <div class="h-10 w-10 rounded-xl bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center shadow-floating">
+                  <component :is="Folder" class="h-5 w-5 text-white" />
+                </div>
+                <div v-if="currentGroupId === g.id" class="absolute -top-1 -right-1 h-3 w-3 bg-[hsl(var(--primary))] rounded-full animate-pulse"></div>
+              </div>
+              <div class="flex-1 min-w-0">
+                <div class="font-semibold text-[hsl(var(--text-primary))] truncate">{{ g.name }}</div>
+                <div class="text-xs text-[hsl(var(--text-tertiary))]">{{ groupCounts[String(g.id)] || 0 }} 个素材</div>
+              </div>
+            </div>
+            <div class="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+              <Button variant="ghost" size="sm" class="h-8 w-8 p-0 hover:bg-[hsl(var(--primary))]/10" title="重命名" @click.stop="openRenameGroup(g)">
+                <Pencil class="h-4 w-4" />
               </Button>
-              <div class="flex items-center gap-1.5">
-                <span class="text-xs px-2 py-0.5 rounded bg-[hsl(var(--muted))] text-[hsl(var(--muted-foreground))]">
-                  {{ groupCounts[String(g.id)] || 0 }}
-                </span>
-                <Button variant="ghost" class="inline-flex items-center justify-center h-6 w-6 rounded-md p-0 opacity-70 hover:opacity-100" title="重命名" @click.stop="openRenameGroup(g)">
-                  <Pencil class="h-3.5 w-3.5" />
+              <Button variant="ghost" size="sm" class="h-8 w-8 p-0 hover:bg-red-500/10 text-red-500" title="删除" @click.stop="openDeleteGroup(g)">
+                <Trash2 class="h-4 w-4" />
+              </Button>
+            </div>
+            <div class="badge">{{ groupCounts[String(g.id)] || 0 }}</div>
+          </div>
+
+          <!-- 未分组项 -->
+          <div
+            :class="[
+              'group flex items-center justify-between p-4 rounded-xl transition-all duration-300 cursor-pointer border-2',
+              currentGroupId === UNASSIGNED 
+                ? 'bg-gradient-to-r from-orange-500/10 to-amber-500/10 border-orange-500/30' 
+                : 'border-transparent hover:bg-[hsl(var(--surface-secondary))] hover:border-[hsl(var(--border-subtle))]'
+            ]"
+            @click="currentGroupId = UNASSIGNED as any"
+          >
+            <div class="flex items-center gap-3">
+              <div class="relative">
+                <div class="h-10 w-10 rounded-xl bg-gradient-to-br from-orange-500 to-amber-600 flex items-center justify-center shadow-floating">
+                  <component :is="AlertCircle" class="h-5 w-5 text-white" />
+                </div>
+                <div v-if="currentGroupId === UNASSIGNED" class="absolute -top-1 -right-1 h-3 w-3 bg-orange-500 rounded-full animate-pulse"></div>
+              </div>
+              <div>
+                <div class="font-semibold text-[hsl(var(--text-primary))]">未分组</div>
+                <div class="text-xs text-[hsl(var(--text-tertiary))]">待整理的素材</div>
+              </div>
+            </div>
+            <div class="badge-warning">{{ groupCounts['null'] || 0 }}</div>
+          </div>
+        </div>
+      </aside>
+
+      <!-- 右侧素材展示区域 -->
+      <section class="flex-1 min-w-0 flex flex-col space-y-6">
+        <!-- === 精致的工具栏 === -->
+        <div class="glass-panel p-6 rounded-2xl space-y-4">
+          <!-- 主要操作区 -->
+          <div class="flex items-center justify-between">
+            <div class="flex items-center gap-4">
+              <!-- 上传按钮重设计 -->
+              <label class="cursor-pointer">
+                <Button class="btn-primary shadow-floating">
+                  <Upload class="h-5 w-5 mr-2" />
+                  <span class="font-semibold">上传素材</span>
                 </Button>
-                <Button variant="ghost" class="inline-flex items-center justify-center h-6 w-6 rounded-md p-0 opacity-70 hover:opacity-100" title="删除" @click.stop="openDeleteGroup(g)">
-                  <Trash2 class="h-3.5 w-3.5" />
+                <input type="file" multiple accept="image/*" class="hidden" @change="onInputChange" />
+              </label>
+              
+              <!-- AI 生成按钮 -->
+              <Button variant="outline" class="border-gradient">
+                <Sparkles class="h-5 w-5 mr-2 text-[hsl(var(--accent))]" />
+                <span class="font-semibold">AI 生成</span>
+              </Button>
+            </div>
+
+            <!-- 右侧工具组 -->
+            <div class="flex items-center gap-4">
+              <!-- 当前分组状态 -->
+              <div class="flex items-center gap-3 px-4 py-2 rounded-xl bg-[hsl(var(--surface-secondary))] border border-[hsl(var(--border-subtle))]">
+                <div class="h-2 w-2 rounded-full bg-emerald-500 animate-pulse"></div>
+                <span class="text-sm font-medium text-[hsl(var(--text-primary))]">
+                  <span v-if="currentGroupId === null">全部素材</span>
+                  <span v-else-if="currentGroupId === (UNASSIGNED as any)">未分组</span>
+                  <span v-else>{{ (groups.find(g=>g.id===currentGroupId) || {name:'分组'}).name }}</span>
+                </span>
+                <div class="badge-primary">
+                  <span v-if="currentGroupId === null">{{ allCount }}</span>
+                  <span v-else-if="currentGroupId === (UNASSIGNED as any)">{{ groupCounts['null'] || 0 }}</span>
+                  <span v-else>{{ groupCounts[String(currentGroupId)] || 0 }}</span>
+                </div>
+              </div>
+
+              <!-- 搜索框重设计 -->
+              <div class="relative">
+                <Search class="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-[hsl(var(--text-tertiary))]" />
+                <Input 
+                  v-model="searchQuery" 
+                  type="text" 
+                  placeholder="搜索你的创意素材..." 
+                  class="pl-12 pr-12 w-80 bg-[hsl(var(--surface-primary))] border-[hsl(var(--border-subtle))] focus:border-[hsl(var(--primary))] text-[hsl(var(--text-primary))]" 
+                />
+                <Button 
+                  v-if="searchQuery" 
+                  variant="ghost" 
+                  @click="searchQuery = ''" 
+                  class="absolute right-2 top-1/2 -translate-y-1/2 h-8 w-8 p-0 hover:bg-[hsl(var(--surface-secondary))] rounded-lg"
+                >
+                  <X class="h-4 w-4" />
+                </Button>
+              </div>
+              
+              <!-- 视图切换重设计 -->
+              <div class="segmented bg-[hsl(var(--surface-secondary))]">
+                <Button variant="ghost" :class="['segmented-item', { 'is-active': viewMode === 'grid' }]" @click="viewMode = 'grid'" title="网格视图">
+                  <Grid3X3 class="h-5 w-5" />
+                </Button>
+                <Button variant="ghost" :class="['segmented-item', { 'is-active': viewMode === 'list' }]" @click="viewMode = 'list'" title="列表视图">
+                  <Grid class="h-5 w-5" />
                 </Button>
               </div>
             </div>
-          </li>
-          <!-- 未分组：放到最下面 -->
-          <li>
-            <div
-              :class="[
-                'w-full group flex items-center justify-between',
-                currentGroupId === UNASSIGNED ? 'nav-item-active' : 'nav-item-base'
-              ]"
-            >
-              <Button
-                variant="ghost"
-                class="flex-1 text-left flex items-center gap-2"
-                @click="currentGroupId = UNASSIGNED as any"
-              >
-                <div class="h-2 w-2 rounded-full bg-[hsl(var(--primary))] opacity-60"></div>
-                <span>未分组</span>
-              </Button>
-              <span class="text-xs px-2 py-0.5 rounded bg-[hsl(var(--muted))] text-[hsl(var(--muted-foreground))]">
-                {{ groupCounts['null'] || 0 }}
-              </span>
-            </div>
-          </li>
-        </ul>
-      </aside>
+          </div>
 
-      <!-- 右侧素材区域 -->
-      <section class="flex-1 min-w-0 flex flex-col">
-        <!-- === 现代化工具栏 === -->
-        <div class="toolbar-modern">
-          <div class="flex items-center gap-4">
-            <!-- 上传按钮 -->
-            <label class="cursor-pointer">
-              <Button class="flex items-center gap-2 pointer-events-none">
-                <Upload class="h-4 w-4" />
-                <span>上传素材</span>
-              </Button>
-              <input type="file" multiple accept="image/*" class="hidden" @change="onInputChange" />
-            </label>
-            
-            <!-- 批量操作 -->
-            <div v-if="selected.size > 0" class="flex items-center gap-2 animate-scale-in">
-              <div class="badge-info px-3 py-1">{{ selected.size }} 项已选</div>
+          <!-- 批量操作条 -->
+          <div v-if="selected.size > 0" class="flex items-center justify-between p-4 bg-gradient-to-r from-[hsl(var(--primary))]/5 to-[hsl(var(--accent))]/5 rounded-xl border border-[hsl(var(--primary))]/20 animate-slide-in-from-top">
+            <div class="flex items-center gap-4">
               <div class="flex items-center gap-2">
-                <Select v-model="moveTargetGroupIdStr">
-                  <SelectTrigger class="min-w-[160px]"><SelectValue placeholder="移动到：无分组" /></SelectTrigger>
+                <div class="h-8 w-8 rounded-lg bg-[hsl(var(--primary))] flex items-center justify-center">
+                  <Check class="h-5 w-5 text-white" />
+                </div>
+                <span class="font-semibold text-[hsl(var(--text-primary))]">已选择 {{ selected.size }} 个素材</span>
+              </div>
+              <div class="flex items-center gap-3">
+                <Select v-model="moveTargetGroupIdStr" class="min-w-[180px]">
+                  <SelectTrigger class="bg-[hsl(var(--surface-primary))] border-[hsl(var(--border-subtle))]">
+                    <SelectValue placeholder="移动到分组..." />
+                  </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="null">移动到：无分组</SelectItem>
+                    <SelectItem value="null">移动到：未分组</SelectItem>
                     <SelectItem v-for="g in groups" :key="g.id" :value="String(g.id)">{{ g.name }}</SelectItem>
                   </SelectContent>
                 </Select>
-                <Button @click="moveSelectedToGroup">确定</Button>
+                <Button @click="moveSelectedToGroup" class="btn-primary">
+                  <component :is="Folder" class="h-4 w-4 mr-2" />
+                  移动
+                </Button>
               </div>
-              <Button variant="destructive" @click="bulkDeleteOpen = true">
-                <Trash2 class="h-4 w-4" />
-                <span>删除所选</span>
+            </div>
+            <div class="flex items-center gap-2">
+              <Button variant="outline" @click="selected.clear()" class="text-[hsl(var(--text-secondary))]">
+                取消选择
+              </Button>
+              <Button variant="destructive" @click="bulkDeleteOpen = true" class="btn-danger">
+                <Trash2 class="h-4 w-4 mr-2" />
+                删除
               </Button>
             </div>
-          </div>
-          
-          <div class="flex items-center gap-3">
-            <!-- 当前分组统计 -->
-            <div class="text-xs px-2 py-1 rounded bg-[hsl(var(--muted))] text-[hsl(var(--muted-foreground))]">
-              <span v-if="currentGroupId === null">所有分组: {{ allCount }}</span>
-              <span v-else-if="currentGroupId === (UNASSIGNED as any)">未分组: {{ groupCounts['null'] || 0 }}</span>
-              <span v-else>
-                {{ (groups.find(g=>g.id===currentGroupId) || {name:'分组'}).name }}:
-                {{ groupCounts[String(currentGroupId)] || 0 }}
-              </span>
-            </div>
-            <!-- 搜索框 -->
-            <div class="relative">
-              <Search class="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-[hsl(var(--muted-foreground))]" />
-              <Input v-model="searchQuery" type="text" placeholder="搜索素材..." class="pl-10 w-64" />
-              <Button v-if="searchQuery" variant="ghost" @click="searchQuery = ''" class="absolute right-2 top-1/2 -translate-y-1/2 p-1 hover:bg-[hsl(var(--muted))] rounded">
-                <X class="h-3 w-3" />
-              </Button>
-            </div>
-            
-            <!-- 视图切换 -->
-            <div class="segmented">
-              <Button variant="ghost" :class="['segmented-item', { 'is-active': viewMode === 'grid' }]" @click="viewMode = 'grid'">
-                <Grid3X3 class="h-4 w-4" />
-              </Button>
-              <Button variant="ghost" :class="['segmented-item', { 'is-active': viewMode === 'list' }]" @click="viewMode = 'list'">
-                <Grid class="h-4 w-4" />
-              </Button>
-            </div>
-            
-            <!-- 高级筛选：由 Accordion 控制展开/收起 -->
           </div>
         </div>
 
-    <!-- === 高级筛选面板（Accordion） === -->
-    <Accordion type="single" collapsible class="m-4">
-      <AccordionItem value="filters">
-        <AccordionTrigger class="px-3 py-2 rounded-lg border border-[hsl(var(--border))] bg-[hsl(var(--card))] text-left">
-          <div class="flex items-center gap-2">
-            <FilterIcon class="h-4 w-4" />
-            <span class="text-sm font-medium">高级筛选</span>
+        <!-- === 高级筛选面板（Accordion） === -->
+        <Accordion type="single" collapsible>
+          <AccordionItem value="filters">
+            <AccordionTrigger class="glass-panel px-4 py-3 rounded-xl border border-[hsl(var(--border-subtle))] text-left">
+              <div class="flex items-center gap-2">
+                <FilterIcon class="h-4 w-4" />
+                <span class="text-sm font-medium">高级筛选</span>
+              </div>
+            </AccordionTrigger>
+            <AccordionContent>
+              <div class="glass-panel p-4 rounded-xl mt-2 animate-slide-in-from-top">
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div>
+                    <label class="block text-sm font-medium mb-2">排序方式</label>
+                    <Select v-model="sortBy">
+                      <SelectTrigger><SelectValue placeholder="按日期" /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="date">按日期</SelectItem>
+                        <SelectItem value="name">按名称</SelectItem>
+                        <SelectItem value="size">按大小</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div>
+                    <label class="block text-sm font-medium mb-2">排序顺序</label>
+                    <Select v-model="sortOrder">
+                      <SelectTrigger><SelectValue placeholder="降序" /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="desc">降序</SelectItem>
+                        <SelectItem value="asc">升序</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div>
+                    <label class="block text-sm font-medium mb-2">每页显示</label>
+                    <Select v-model="pageSizeStr">
+                      <SelectTrigger><SelectValue placeholder="24项" /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="12">12项</SelectItem>
+                        <SelectItem value="24">24项</SelectItem>
+                        <SelectItem value="48">48项</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+              </div>
+            </AccordionContent>
+          </AccordionItem>
+        </Accordion>
+
+        <!-- === 生成操作条（点击后弹出确认框） === -->
+        <div v-if="selected.size > 0" class="glass-panel p-4 rounded-xl border border-[hsl(var(--primary))]/20 bg-gradient-to-r from-[hsl(var(--primary))]/5 to-[hsl(var(--accent))]/5 animate-slide-in-from-bottom">
+          <div class="flex items-center justify-between">
+            <div class="flex items-center gap-3">
+              <Sparkles class="h-5 w-5 text-[hsl(var(--primary))]" />
+              <span class="font-medium">已选择 {{ selected.size }} 项</span>
+            </div>
+            <Button :disabled="isGenerating" @click="confirmOpen = true" class="btn-primary">
+              <span v-if="isGenerating" class="spinner mr-2"></span>
+              <Sparkles v-else class="w-4 h-4 mr-1" />
+              生成
+            </Button>
           </div>
-        </AccordionTrigger>
-        <AccordionContent>
-          <div class="glass-panel p-4 rounded-xl animate-slide-in-from-top">
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div>
-                <label class="block text-sm font-medium mb-2">排序方式</label>
-                <Select v-model="sortBy">
-                  <SelectTrigger><SelectValue placeholder="按日期" /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="date">按日期</SelectItem>
-                    <SelectItem value="name">按名称</SelectItem>
-                    <SelectItem value="size">按大小</SelectItem>
-                  </SelectContent>
-                </Select>
+        </div>
+
+        <!-- === 素材网格容器 === -->
+        <div class="flex-1 min-h-0 flex flex-col">
+          <!-- 状态栏 -->
+          <div class="flex items-center justify-between p-4 bg-[hsl(var(--surface-secondary))]/50 rounded-xl border border-[hsl(var(--border-subtle))]">
+            <div class="flex items-center gap-4">
+              <span class="text-[hsl(var(--text-primary))] font-medium">{{ total }} 个素材</span>
+              <span v-if="searchQuery" class="text-[hsl(var(--text-secondary))]">搜索: "{{ searchQuery }}"</span>
+            </div>
+            
+            <div class="flex items-center gap-3">
+              <label class="flex items-center gap-2 cursor-pointer hover:text-[hsl(var(--text-primary))] transition-colors">
+                <input type="checkbox" @change="(e:any)=>toggleAllOnPage(e.target.checked)" class="rounded" />
+                <span class="text-sm">本页全选</span>
+              </label>
+            </div>
+          </div>
+
+          <!-- 素材网格 -->
+          <div class="flex-1 overflow-auto mt-4">
+            <div 
+              v-if="viewMode === 'grid'"
+              class="grid grid-cols-[repeat(auto-fill,minmax(220px,1fr))] gap-4 animate-fade-in"
+              @dragover.prevent="isDragging = true"
+              @dragenter.prevent="isDragging = true"
+              @dragleave="isDragging = false"
+            >
+              <!-- 空状态 -->
+              <div v-if="pageItems.length === 0 && !searchQuery" class="col-span-full flex flex-col items-center justify-center py-16 text-center">
+                <div class="dropzone-idle p-12 max-w-lg mx-auto">
+                  <Upload class="h-20 w-20 mx-auto mb-6 text-[hsl(var(--text-tertiary))] animate-float" />
+                  <h3 class="text-xl font-bold mb-4 text-[hsl(var(--text-primary))]">开始上传创意素材</h3>
+                  <p class="text-[hsl(var(--text-secondary))] mb-8 leading-relaxed">
+                    拖拽图片到此处，或点击按钮选择文件
+                  </p>
+                  <label class="btn-primary cursor-pointer shadow-floating">
+                    <Upload class="h-5 w-5 mr-2" />
+                    选择文件
+                    <input type="file" multiple accept="image/*" class="hidden" @change="onInputChange" />
+                  </label>
+                </div>
               </div>
-              <div>
-                <label class="block text-sm font-medium mb-2">排序顺序</label>
-                <Select v-model="sortOrder">
-                  <SelectTrigger><SelectValue placeholder="降序" /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="desc">降序</SelectItem>
-                    <SelectItem value="asc">升序</SelectItem>
-                  </SelectContent>
-                </Select>
+              
+              <!-- 搜索无结果 -->
+              <div v-else-if="pageItems.length === 0 && searchQuery" class="col-span-full flex flex-col items-center justify-center py-16 text-center">
+                <AlertCircle class="h-16 w-16 mb-4 text-[hsl(var(--text-tertiary))]" />
+                <h3 class="text-lg font-semibold mb-2 text-[hsl(var(--text-primary))]">未找到匹配的素材</h3>
+                <p class="text-[hsl(var(--text-secondary))]">尝试修改搜索关键词或清除筛选条件</p>
               </div>
-              <div>
-                <label class="block text-sm font-medium mb-2">每页显示</label>
-                <Select v-model="pageSizeStr">
-                  <SelectTrigger><SelectValue placeholder="24项" /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="12">12项</SelectItem>
-                    <SelectItem value="24">24项</SelectItem>
-                    <SelectItem value="48">48项</SelectItem>
-                  </SelectContent>
-                </Select>
+              
+              <!-- 图片卡片 -->
+              <div
+                v-for="(item, index) in pageItems"
+                :key="item.id"
+                class="card-interactive group relative overflow-hidden animate-scale-in"
+                :style="{ animationDelay: `${index * 50}ms` }"
+                @click="previewImage = item; showPreview = true"
+                @contextmenu.prevent="openContextMenu($event, item)"
+              >
+                <!-- 选择框 -->
+                <label class="absolute top-3 left-3 z-10 cursor-pointer" @click.stop>
+                  <input
+                    type="checkbox"
+                    :checked="isChecked(item.id)"
+                    @change="(e:any)=>toggle(item.id,e.target.checked)"
+                    class="w-5 h-5 rounded border-2 border-white/50 bg-white/10 backdrop-blur-sm"
+                  />
+                </label>
+                
+                <!-- 快捷操作 -->
+                <div class="absolute top-3 right-3 flex gap-1 opacity-0 group-hover:opacity-100 transition-all duration-200">
+                  <Button variant="ghost" class="p-2 bg-black/20 backdrop-blur-sm rounded-lg text-white hover:bg-black/30" title="预览">
+                    <Eye class="h-4 w-4" />
+                  </Button>
+                  <Button variant="ghost" class="p-2 bg-black/20 backdrop-blur-sm rounded-lg text-white hover:bg-black/30" title="下载">
+                    <Download class="h-4 w-4" />
+                  </Button>
+                  <Button variant="ghost" class="p-2 bg-black/20 backdrop-blur-sm rounded-lg text-white hover:bg-black/30" title="更多">
+                    <MoreVertical class="h-4 w-4" />
+                  </Button>
+                </div>
+                
+                <!-- 图片 -->
+                <div class="aspect-square overflow-hidden rounded-t-xl">
+                  <img
+                    :src="dataUrl(item.mimeType, item.previewBase64)"
+                    :alt="item.filename || item.id"
+                    class="w-full h-full object-cover transition-transform duration-300 group-hover:scale-110"
+                    loading="lazy"
+                  />
+                </div>
+                
+                <!-- 信息区域 -->
+                <div class="p-4">
+                  <h3 class="font-semibold text-sm text-[hsl(var(--text-primary))] truncate mb-2">
+                    {{ item.filename || item.id }}
+                  </h3>
+                  <div class="flex items-center justify-between text-xs text-[hsl(var(--text-tertiary))]">
+                    <span>{{ formatFileSize(item.sizeBytes) }}</span>
+                    <span v-if="item.createdAt">{{ formatDate(item.createdAt) }}</span>
+                  </div>
+                </div>
+                
+                <!-- 加载状态指示器 -->
+                <div v-if="!item.previewBase64" class="absolute inset-0 flex items-center justify-center bg-[hsl(var(--surface-primary))]/90">
+                  <div class="spinner h-6 w-6"></div>
+                </div>
               </div>
             </div>
           </div>
-        </AccordionContent>
-      </AccordionItem>
-    </Accordion>
 
-    <!-- === 生成操作条（点击后弹出确认框） === -->
-    <div v-if="selected.size > 0" class="bg-gradient-to-r from-[hsl(var(--primary))]/5 to-[hsl(var(--accent))]/5 border-y border-[hsl(var(--border))] py-2 px-4 animate-slide-in-from-bottom">
-      <div class="flex items-center justify-between">
-        <div class="flex items-center gap-3">
-          <Sparkles class="h-5 w-5 text-[hsl(var(--primary))]" />
-          <span class="font-medium">已选择 {{ selected.size }} 项</span>
+          <!-- 分页 -->
+          <div v-if="pageCount > 1" class="mt-6">
+            <Pagination v-model:page="page" :total="total" :items-per-page="pageSize" :sibling-count="1" :show-edges="pageCount > 7">
+              <PaginationContent v-slot="{ items }" class="justify-center">
+                <PaginationFirst v-if="pageCount > 7" />
+                <PaginationPrevious />
+                <template v-for="(p, idx) in items" :key="idx">
+                  <PaginationItem v-if="p.type==='page'" :value="p.value" :is-active="p.value === page">{{ p.value }}</PaginationItem>
+                  <PaginationEllipsis v-else :index="idx" />
+                </template>
+                <PaginationNext />
+                <PaginationLast v-if="pageCount > 7" />
+              </PaginationContent>
+            </Pagination>
+          </div>
         </div>
-        <Button :disabled="isGenerating" @click="confirmOpen = true">
-          <span v-if="isGenerating" class="spinner mr-2"></span>
-          <Sparkles v-else class="w-4 h-4 mr-1" />
-          生成
-        </Button>
-      </div>
+      </section>
     </div>
 
     <!-- === 生成确认弹窗（Reka UI Dialog） === -->

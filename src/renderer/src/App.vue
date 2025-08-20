@@ -73,76 +73,116 @@ onMounted(() => {
 </script>
 
 <template>
-  <div class="h-full w-full flex bg-gradient-to-br from-[hsl(var(--background))] to-[hsl(var(--muted))] animate-fade-in">
-    <!-- === 现代化侧边栏 === -->
-    <aside class="w-72 bg-[hsl(var(--card))] border-r border-[hsl(var(--border))] flex flex-col shadow-elegant backdrop-blur-xl">
-      <!-- 品牌区域 -->
-      <div class="p-4 border-b border-[hsl(var(--border))]">
-        <div class="flex items-center gap-3">
-          <div class="h-10 w-10 rounded-xl bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center shadow-floating">
-            <span class="text-white font-bold text-lg">Q</span>
+  <div class="h-full w-full flex bg-gradient-to-br from-[hsl(var(--background))] via-[hsl(var(--surface-secondary))] to-[hsl(var(--surface-tertiary))] animate-fade-in overflow-hidden">
+    <!-- === 精简侧边栏 === -->
+    <aside class="w-80 bg-[hsl(var(--surface-primary))] border-r border-[hsl(var(--border-subtle))] flex flex-col shadow-elevated backdrop-blur-xl">
+      <!-- 品牌区域重设计 -->
+      <div class="p-6 border-b border-[hsl(var(--border-subtle))] bg-gradient-to-br from-[hsl(var(--primary))]/5 to-[hsl(var(--accent))]/5">
+        <div class="flex items-center gap-4">
+          <div class="relative">
+            <div class="h-12 w-12 rounded-2xl bg-gradient-to-br from-[hsl(var(--primary))] to-[hsl(var(--accent))] flex items-center justify-center shadow-floating animate-glow">
+              <span class="text-white font-bold text-xl tracking-tight">P</span>
+            </div>
+            <div class="absolute -bottom-1 -right-1 h-4 w-4 bg-gradient-to-br from-emerald-400 to-emerald-500 rounded-full border-2 border-[hsl(var(--surface-primary))] animate-bounce-subtle"></div>
           </div>
-          <div>
-            <h1 class="font-bold text-lg text-[hsl(var(--foreground))] tracking-tight">
+          <div class="flex-1">
+            <h1 class="font-bold text-xl text-[hsl(var(--foreground))] tracking-tight text-gradient">
               PixelForge
             </h1>
-            <p class="text-xs text-[hsl(var(--muted-foreground))] mt-0.5">
-              AI图片生成管理
+            <p class="text-sm text-[hsl(var(--text-tertiary))] mt-1 font-medium">
+              AI 创意工作台
             </p>
           </div>
         </div>
       </div>
 
-      <!-- 导航菜单 -->
-      <nav class="flex-1 p-1 space-y-2">
-        <div class="text-xs font-semibold text-[hsl(var(--muted-foreground))] uppercase tracking-wider mb-4">
-          工作区
+      <!-- 导航菜单增强 -->
+      <nav class="flex-1 p-6 space-y-3 overflow-y-auto">
+        <div class="flex items-center gap-2 mb-6">
+          <div class="h-1 w-8 bg-gradient-to-r from-[hsl(var(--primary))] to-[hsl(var(--accent))] rounded-full"></div>
+          <div class="text-xs font-bold text-[hsl(var(--text-tertiary))] uppercase tracking-[0.1em]">
+            创作空间
+          </div>
         </div>
         <template v-for="item in navItems" :key="item.id">
           <Button
+            variant="ghost"
             :class="[
-              'nav-item-base group relative overflow-hidden w-full',
-              item.active ? 'nav-item-active' : ''
+              'nav-item-base group relative overflow-hidden w-full justify-start border border-transparent',
+              item.active ? 'nav-item-active' : 'hover:border-[hsl(var(--border-subtle))]'
             ]"
             @click="switchTab(item.id as 'uploads' | 'jobs' | 'settings')"
             :aria-current="item.active"
           >
-            <component :is="item.icon" class="h-5 w-5 shrink-0 transition-transform group-hover:scale-110" />
-            <div class="flex-1 text-left">
-              <div class="font-medium text-sm">{{ item.label }}</div>
-              <div class="text-xs text-[hsl(var(--muted-foreground))] group-hover:text-[hsl(var(--foreground))] transition-colors">
-                {{ item.description }}
+            <div class="relative z-10 flex items-center gap-4 w-full">
+              <div class="relative">
+                <component :is="item.icon" class="h-5 w-5 shrink-0 transition-all duration-300 group-hover:scale-110" />
+                <div v-if="item.active" class="absolute inset-0 h-5 w-5 bg-[hsl(var(--primary))] rounded-full opacity-20 animate-pulse"></div>
+              </div>
+              <div class="flex-1 text-left min-w-0">
+                <div class="font-semibold text-sm truncate">{{ item.label }}</div>
+                <div class="text-xs opacity-70 transition-opacity group-hover:opacity-100 truncate">
+                  {{ item.description }}
+                </div>
               </div>
             </div>
-            <!-- 活跃指示器 -->
-            <div v-if="item.active" class="absolute right-0 top-1/2 -translate-y-1/2 w-1 h-8 bg-gradient-to-b from-blue-500 to-purple-600 rounded-l-full animate-scale-in"></div>
           </Button>
         </template>
+        
+        <!-- 快速操作区域 -->
+        <div class="mt-8 pt-6 border-t border-[hsl(var(--border-subtle))]">
+          <div class="text-xs font-bold text-[hsl(var(--text-tertiary))] uppercase tracking-[0.1em] mb-4">
+            快速操作
+          </div>
+          <div class="space-y-2">
+            <Button variant="ghost" class="w-full justify-start text-sm text-[hsl(var(--text-secondary))] hover:text-[hsl(var(--text-primary))]">
+              <component :is="Images" class="h-4 w-4 mr-3" />
+              批量导入
+            </Button>
+            <Button variant="ghost" class="w-full justify-start text-sm text-[hsl(var(--text-secondary))] hover:text-[hsl(var(--text-primary))]">
+              <component :is="Settings" class="h-4 w-4 mr-3" />
+              API 配置
+            </Button>
+          </div>
+        </div>
       </nav>
 
-      <!-- 用户区域和设置 -->
-      <div class="p-1 border-t border-[hsl(var(--border))] space-y-3">
-        <!-- 主题切换 -->
+      <!-- 优雅的底部区域 -->
+      <div class="p-6 border-t border-[hsl(var(--border-subtle))] bg-gradient-to-t from-[hsl(var(--surface-secondary))]/30 to-transparent space-y-4">
+        <!-- 主题切换重设计 -->
         <Button
+          variant="ghost"
           @click="toggleTheme"
-          class="w-full nav-item-base group justify-between"
+          class="w-full nav-item-base group justify-between border border-[hsl(var(--border-subtle))] hover:border-[hsl(var(--primary))]/30"
           :title="themeLabel"
         >
           <div class="flex items-center gap-3">
-            <component :is="themeIconComponent" class="h-4 w-4" />
-            <span class="text-sm font-medium">{{ themeLabel }}</span>
+            <div class="relative">
+              <component :is="themeIconComponent" class="h-5 w-5 transition-transform group-hover:rotate-12" />
+              <div class="absolute inset-0 h-5 w-5 bg-[hsl(var(--accent))] rounded-full opacity-0 group-hover:opacity-20 transition-opacity animate-pulse"></div>
+            </div>
+            <span class="text-sm font-semibold">{{ themeLabel }}</span>
           </div>
-          <div class="h-2 w-2 rounded-full bg-[hsl(var(--primary))] opacity-60 group-hover:opacity-100 transition-opacity"></div>
+          <div class="h-2 w-2 rounded-full bg-gradient-to-r from-[hsl(var(--primary))] to-[hsl(var(--accent))] opacity-60 group-hover:opacity-100 transition-all animate-pulse"></div>
         </Button>
         
-        <!-- 用户信息 -->
-        <div class="flex items-center gap-3 h-16 rounded-lg bg-[hsl(var(--muted))]/30">
-          <div class="h-8 w-8 rounded-full bg-gradient-to-br from-green-400 to-blue-500 flex items-center justify-center">
-            <User class="h-4 w-4 text-white" />
-          </div>
-          <div class="flex-1 min-w-0">
-            <div class="font-medium text-sm text-[hsl(var(--foreground))] truncate">管理员</div>
-            <div class="text-xs text-[hsl(var(--muted-foreground))] opacity-80">v1.0.0</div>
+        <!-- 用户信息卡片重设计 -->
+        <div class="card-elevated p-4 bg-gradient-to-br from-[hsl(var(--surface-primary))] to-[hsl(var(--surface-secondary))] border border-[hsl(var(--border-subtle))]">
+          <div class="flex items-center gap-3">
+            <div class="relative">
+              <div class="h-10 w-10 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center shadow-floating">
+                <User class="h-5 w-5 text-white" />
+              </div>
+              <div class="absolute -top-1 -right-1 h-3 w-3 bg-emerald-400 rounded-full border border-[hsl(var(--surface-primary))] animate-pulse"></div>
+            </div>
+            <div class="flex-1 min-w-0">
+              <div class="font-semibold text-sm text-[hsl(var(--text-primary))] truncate">AI 创作师</div>
+              <div class="text-xs text-[hsl(var(--text-tertiary))] flex items-center gap-2">
+                <span>v1.0.0</span>
+                <span class="h-1 w-1 bg-[hsl(var(--text-tertiary))] rounded-full"></span>
+                <span class="text-emerald-500 font-medium">在线</span>
+              </div>
+            </div>
           </div>
         </div>
       </div>
