@@ -1,6 +1,10 @@
 <script setup lang="ts">
 import { reactive, ref, onMounted, computed } from 'vue'
 import { toastManager } from '@/composables/useToast'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select'
+import { Label } from '@/components/ui/label'
 
 const bridge: any = (window as any)?.api
 
@@ -139,20 +143,21 @@ onMounted(load)
             <template v-if="active === 'qwen'">
               <label class="flex flex-col gap-1">
                 <span class="text-sm text-[hsl(var(--muted-foreground))]">API Key</span>
-                <input v-model="form.qwen.apiKey" type="password" placeholder="sk-..." class="input" />
+                <Input v-model="form.qwen.apiKey" type="password" placeholder="sk-..." />
               </label>
               <label class="flex flex-col gap-1">
                 <span class="text-sm text-[hsl(var(--muted-foreground))]">Endpoint</span>
-                <input v-model="form.qwen.endpoint" type="text" class="input" />
+                <Input v-model="form.qwen.endpoint" type="text" />
                 <span class="text-xs text-[hsl(var(--muted-foreground))]">默认：https://dashscope.aliyuncs.com/api/v1/services/images/editing</span>
               </label>
               <label class="flex flex-col gap-1">
                 <span class="text-sm text-[hsl(var(--muted-foreground))]">Model</span>
-                <select v-model="form.qwen.model" class="input">
-                  <option v-for="opt in modelOptions.qwen" :key="opt.value" :value="opt.value">
-                    {{ opt.label }}
-                  </option>
-                </select>
+                <Select v-model="form.qwen.model">
+                  <SelectTrigger><SelectValue placeholder="选择模型" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem v-for="opt in modelOptions.qwen" :key="opt.value" :value="opt.value">{{ opt.label }}</SelectItem>
+                  </SelectContent>
+                </Select>
               </label>
             </template>
 
@@ -160,20 +165,21 @@ onMounted(load)
             <template v-else-if="active === 'openai'">
               <label class="flex flex-col gap-1">
                 <span class="text-sm text-[hsl(var(--muted-foreground))]">API Key</span>
-                <input v-model="form.openai.apiKey" type="password" placeholder="sk-..." class="input" />
+                <Input v-model="form.openai.apiKey" type="password" placeholder="sk-..." />
               </label>
               <label class="flex flex-col gap-1">
                 <span class="text-sm text-[hsl(var(--muted-foreground))]">Base URL</span>
-                <input v-model="form.openai.baseUrl" type="text" class="input" />
+                <Input v-model="form.openai.baseUrl" type="text" />
                 <span class="text-xs text-[hsl(var(--muted-foreground))]">默认：https://api.openai.com/v1（如走代理可改为自定义网关）</span>
               </label>
               <label class="flex flex-col gap-1">
                 <span class="text-sm text-[hsl(var(--muted-foreground))]">Image Model</span>
-                <select v-model="form.openai.imageModel" class="input">
-                  <option v-for="opt in modelOptions.openai" :key="opt.value" :value="opt.value">
-                    {{ opt.label }}
-                  </option>
-                </select>
+                <Select v-model="form.openai.imageModel">
+                  <SelectTrigger><SelectValue placeholder="选择模型" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem v-for="opt in modelOptions.openai" :key="opt.value" :value="opt.value">{{ opt.label }}</SelectItem>
+                  </SelectContent>
+                </Select>
               </label>
             </template>
 
@@ -181,27 +187,28 @@ onMounted(load)
             <template v-else>
               <label class="flex flex-col gap-1">
                 <span class="text-sm text-[hsl(var(--muted-foreground))]">API Key</span>
-                <input v-model="form.deepseek.apiKey" type="password" placeholder="sk-..." class="input" />
+                <Input v-model="form.deepseek.apiKey" type="password" placeholder="sk-..." />
               </label>
               <label class="flex flex-col gap-1">
                 <span class="text-sm text-[hsl(var(--muted-foreground))]">Base URL</span>
-                <input v-model="form.deepseek.baseUrl" type="text" class="input" />
+                <Input v-model="form.deepseek.baseUrl" type="text" />
                 <span class="text-xs text-[hsl(var(--muted-foreground))]">默认：https://api.deepseek.com/v1</span>
               </label>
               <label class="flex flex-col gap-1">
                 <span class="text-sm text-[hsl(var(--muted-foreground))]">Image Model</span>
-                <select v-model="form.deepseek.imageModel" class="input">
-                  <option v-for="opt in modelOptions.deepseek" :key="opt.value" :value="opt.value">
-                    {{ opt.label }}
-                  </option>
-                </select>
+                <Select v-model="form.deepseek.imageModel">
+                  <SelectTrigger><SelectValue placeholder="选择模型" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem v-for="opt in modelOptions.deepseek" :key="opt.value" :value="opt.value">{{ opt.label }}</SelectItem>
+                  </SelectContent>
+                </Select>
               </label>
             </template>
 
             <div class="flex items-center gap-3 pt-2">
-              <button class="btn disabled:opacity-60" :disabled="saving" @click="save">
+              <Button :disabled="saving" @click="save">
                 {{ saving ? '保存中…' : '保存当前 Tab' }}
-              </button>
+              </Button>
               <span v-if="savedHint" class="text-xs text-green-600">{{ savedHint }}</span>
             </div>
           </div>

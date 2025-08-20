@@ -5,6 +5,7 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/
 import { DialogRoot, DialogTrigger, DialogPortal, DialogOverlay, DialogContent, DialogTitle, DialogDescription, DialogClose } from 'reka-ui'
 import { Button } from '@/components/ui/button'
 import { Select, SelectTrigger, SelectContent, SelectItem, SelectValue } from '@/components/ui/select'
+import { Input } from '@/components/ui/input'
 import Pagination from '@/components/ui/Pagination.vue'
 import { toastManager } from '@/composables/useToast'
 import type { ImageItem, StyleItem, GroupItem } from '@/types'
@@ -52,6 +53,7 @@ const bulkDeleteOpen = ref(false)
 // === 分页状态 ===
 const page = ref(1)
 const pageSize = ref(24)
+const pageSizeStr = computed({ get: () => String(pageSize.value), set: (v: string) => (pageSize.value = Number(v || 0) || pageSize.value) })
 
 // === 高级筛选状态 ===
 // 使用 shadcn-vue Accordion 替换原有筛选折叠逻辑
@@ -463,7 +465,7 @@ async function moveSingleToGroup(groupId: string | null) {
       <aside class="w-64 shrink-0 border-r border-[hsl(var(--border))] p-1">
         <div class="flex items-center justify-between mb-2">
           <div class="text-sm font-medium">分组</div>
-          <button class="btn btn-outline" @click="openCreateGroup">新建</button>
+          <Button variant="outline" @click="openCreateGroup">新建</Button>
         </div>
         <ul class="space-y-1">
           <li>
@@ -590,12 +592,7 @@ async function moveSingleToGroup(groupId: string | null) {
             <!-- 搜索框 -->
             <div class="relative">
               <Search class="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-[hsl(var(--muted-foreground))]" />
-              <input
-                v-model="searchQuery"
-                type="text"
-                placeholder="搜索素材..."
-                class="input-base pl-10 w-64"
-              />
+              <Input v-model="searchQuery" type="text" placeholder="搜索素材..." class="pl-10 w-64" />
               <button
                 v-if="searchQuery"
                 @click="searchQuery = ''"
@@ -660,7 +657,7 @@ async function moveSingleToGroup(groupId: string | null) {
               </div>
               <div>
                 <label class="block text-sm font-medium mb-2">每页显示</label>
-                <Select v-model="(pageSize as any)">
+                <Select v-model="pageSizeStr">
                   <SelectTrigger><SelectValue placeholder="24项" /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="12">12项</SelectItem>
@@ -900,7 +897,7 @@ async function moveSingleToGroup(groupId: string | null) {
         <DialogContent class="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[420px] max-w-[90vw] card-base p-4">
           <DialogTitle class="text-lg font-semibold mb-1">新建分组</DialogTitle>
           <DialogDescription class="text-sm text-[hsl(var(--muted-foreground))] mb-3">请输入分组名称</DialogDescription>
-          <input v-model="createName" class="input-base w-full" placeholder="分组名称" @keyup.enter="submitCreateGroup" />
+          <Input v-model="createName" class="w-full" placeholder="分组名称" @keyup.enter="submitCreateGroup" />
           <div class="flex items-center justify-end gap-2 mt-4">
             <DialogClose as-child>
               <Button variant="outline">取消</Button>
@@ -918,7 +915,7 @@ async function moveSingleToGroup(groupId: string | null) {
         <DialogContent class="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[420px] max-w-[90vw] card-base p-4">
           <DialogTitle class="text-lg font-semibold mb-1">重命名分组</DialogTitle>
           <DialogDescription class="text-sm text-[hsl(var(--muted-foreground))] mb-3">请输入新的名称</DialogDescription>
-          <input v-model="renameName" class="input-base w-full" placeholder="新名称" @keyup.enter="submitRenameGroup" />
+          <Input v-model="renameName" class="w-full" placeholder="新名称" @keyup.enter="submitRenameGroup" />
           <div class="flex items-center justify-end gap-2 mt-4">
             <DialogClose as-child>
               <Button variant="outline">取消</Button>

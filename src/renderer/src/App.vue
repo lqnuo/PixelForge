@@ -7,6 +7,7 @@ import UploadsPage from './pages/uploads-page.vue'
 import JobsPage from './pages/jobs-page.vue'
 import SettingsPage from './pages/settings-page.vue'
 import Toast from './components/ui/Toast.vue'
+import { Button } from '@/components/ui/button'
 
 const tab = ref<'uploads' | 'jobs' | 'settings'>('uploads')
 const { currentTheme, isDark, themeIcon, themeLabel, toggleTheme } = useTheme()
@@ -105,7 +106,7 @@ onMounted(() => {
           工作区
         </div>
         <template v-for="item in navItems" :key="item.id">
-          <button
+          <Button
             :class="[
               'nav-item-base group relative overflow-hidden w-full',
               item.active ? 'nav-item-active' : ''
@@ -122,14 +123,14 @@ onMounted(() => {
             </div>
             <!-- 活跃指示器 -->
             <div v-if="item.active" class="absolute right-0 top-1/2 -translate-y-1/2 w-1 h-8 bg-gradient-to-b from-blue-500 to-purple-600 rounded-l-full animate-scale-in"></div>
-          </button>
+          </Button>
         </template>
       </nav>
 
       <!-- 用户区域和设置 -->
       <div class="p-1 border-t border-[hsl(var(--border))] space-y-3">
         <!-- 主题切换 -->
-        <button
+        <Button
           @click="toggleTheme"
           class="w-full nav-item-base group justify-between"
           :title="themeLabel"
@@ -139,7 +140,7 @@ onMounted(() => {
             <span class="text-sm font-medium">{{ themeLabel }}</span>
           </div>
           <div class="h-2 w-2 rounded-full bg-[hsl(var(--primary))] opacity-60 group-hover:opacity-100 transition-opacity"></div>
-        </button>
+        </Button>
         
         <!-- 用户信息 -->
         <div class="flex items-center gap-3 h-16 rounded-lg bg-[hsl(var(--muted))]/30">

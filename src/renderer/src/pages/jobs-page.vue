@@ -40,7 +40,7 @@ const tableData = computed<TableRow[]>(() =>
 )
 
 async function fetchJobs() {
-  const res = await bridge.job.list({ page: page.value, pageSize: pageSize.value, status: statusFilter.value })
+  const res = await bridge.job.list({ page: page.value, pageSize: pageSize.value, status: statusFilter.value || null })
   jobs.value = res.items
   total.value = res.total
   await loadPreviewsForJobs()
