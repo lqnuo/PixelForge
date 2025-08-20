@@ -109,7 +109,7 @@ onMounted(load)
 
 <template>
   <div class="h-full flex flex-col">
-    <div class="toolbar flex items-center justify-between">
+    <div class="toolbar-modern flex items-center justify-between">
       <div class="text-base font-semibold">设置</div>
     </div>
 
@@ -223,9 +223,4 @@ onMounted(load)
   </div>
 </template>
 
-<style scoped>
-.card { @apply rounded-lg border border-[hsl(var(--border))] bg-[hsl(var(--card))]; }
-.input { @apply h-9 px-3 rounded-md border border-[hsl(var(--border))] bg-[hsl(var(--background))]; }
-.btn { @apply inline-flex items-center px-3 py-2 rounded-md bg-[hsl(var(--primary))] text-white hover:opacity-90; }
-.toolbar { @apply h-12 px-4 border-b border-[hsl(var(--border))] bg-[hsl(var(--card))]; }
-</style>
+<!-- no scoped styles needed; uses global utility classes from globals.css -->
