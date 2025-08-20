@@ -1,8 +1,8 @@
 import { resolve } from 'path'
 import { defineConfig, externalizeDepsPlugin } from 'electron-vite'
 import vue from '@vitejs/plugin-vue'
-import UnoCSS from 'unocss/vite'
-import { presetWind, transformerDirectives, transformerVariantGroup } from 'unocss'
+import tailwindcss from '@tailwindcss/vite'
+
 
 export default defineConfig({
   main: {
@@ -20,10 +20,7 @@ export default defineConfig({
     },
     plugins: [
       vue(),
-      UnoCSS({
-        presets: [presetWind()],
-        transformers: [transformerDirectives(), transformerVariantGroup()],
-      }),
+      tailwindcss(),
     ]
   }
 })
