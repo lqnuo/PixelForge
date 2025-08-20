@@ -6,7 +6,7 @@ import { DialogRoot, DialogTrigger, DialogPortal, DialogOverlay, DialogContent, 
 import { Button } from '@/components/ui/button'
 import { Select, SelectTrigger, SelectContent, SelectItem, SelectValue } from '@/components/ui/select'
 import { Input } from '@/components/ui/input'
-import Pagination from '@/components/ui/Pagination.vue'
+import { Pagination, PaginationContent, PaginationEllipsis, PaginationFirst, PaginationLast, PaginationNext, PaginationPrevious, PaginationItem } from '@/components/ui/pagination'
 import type { ImageItem, StyleItem, GroupItem } from '@/types'
 
 const bridge: any = (window as any)?.api
@@ -824,16 +824,20 @@ async function moveSingleToGroup(groupId: string | null) {
       </div>
     </div>
 
-    <!-- === 分页（放在列表下方） === -->
+    <!-- === 分页（shadcn-vue Pagination） === -->
     <div v-if="pageCount > 1" class="px-6 py-3 border-t border-[hsl(var(--border))] bg-[hsl(var(--background))]">
-      <Pagination 
-        v-model:page="page" 
-        :page-count="pageCount" 
-        :total="total"
-        :items-per-page="pageSize"
-        :sibling-count="1"
-        :show-edges="pageCount > 7"
-      />
+      <Pagination v-model:page="page" :total="total" :items-per-page="pageSize" :sibling-count="1" :show-edges="pageCount > 7">
+        <PaginationContent v-slot="{ items }">
+          <PaginationFirst v-if="pageCount > 7" />
+          <PaginationPrevious />
+          <template v-for="(p, idx) in items" :key="idx">
+            <PaginationItem v-if="p.type==='page'" :value="p.value" :is-active="p.value === page">{{ p.value }}</PaginationItem>
+            <PaginationEllipsis v-else :index="idx" />
+          </template>
+          <PaginationNext />
+          <PaginationLast v-if="pageCount > 7" />
+        </PaginationContent>
+      </Pagination>
     </div>
 
     <!-- === 图片预览模态框 === -->

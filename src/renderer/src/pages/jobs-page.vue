@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { onMounted, ref, computed, watch, h } from 'vue'
 import type { ImageItem } from '@/types'
-import Pagination from '@/components/ui/Pagination.vue'
+import { Pagination, PaginationContent, PaginationEllipsis, PaginationFirst, PaginationLast, PaginationNext, PaginationPrevious, PaginationItem } from '@/components/ui/pagination'
 import { Button } from '@/components/ui/button'
 import { Select, SelectTrigger, SelectContent, SelectItem, SelectValue } from '@/components/ui/select'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
@@ -203,9 +203,20 @@ async function downloadFirstResult(jobId: string) {
         </TableBody>
       </Table>
     </div>
-    <!-- 分页：紧跟表格容器之后（容器外，视觉上在表格下面） -->
+    <!-- 分页：shadcn-vue Pagination -->
     <div v-if="pageCount > 1" class="px-4 py-3 border-t border-[hsl(var(--border))] bg-[hsl(var(--background))]">
-      <Pagination v-model:page="page" :page-count="pageCount" />
+      <Pagination v-model:page="page" :total="total" :items-per-page="pageSize" :sibling-count="1" :show-edges="pageCount > 7">
+        <PaginationContent v-slot="{ items }">
+          <PaginationFirst v-if="pageCount > 7" />
+          <PaginationPrevious />
+          <template v-for="(p, idx) in items" :key="idx">
+            <PaginationItem v-if="p.type==='page'" :value="p.value" :is-active="p.value === page">{{ p.value }}</PaginationItem>
+            <PaginationEllipsis v-else :index="idx" />
+          </template>
+          <PaginationNext />
+          <PaginationLast v-if="pageCount > 7" />
+        </PaginationContent>
+      </Pagination>
     </div>
   </div>
 </template>
