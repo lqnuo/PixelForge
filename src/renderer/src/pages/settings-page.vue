@@ -36,7 +36,8 @@ const form = reactive({
 // 预设可选模型（占位，不发请求）
 const modelOptions: Record<Provider, Array<{ label: string; value: string }>> = {
   qwen: [
-    { label: 'qwen-image-edit', value: 'qwen-image-edit' },
+    { label: 'qwen-image-edit (同步)', value: 'qwen-image-edit' },
+    { label: 'wanx2.1-imageedit (异步)', value: 'wanx2.1-imageedit' },
     { label: 'qwen-vl-plus', value: 'qwen-vl-plus' },
     { label: 'qwen-vl-max', value: 'qwen-vl-max' },
     { label: 'qwen-vl-turbo', value: 'qwen-vl-turbo' }

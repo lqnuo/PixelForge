@@ -2,7 +2,7 @@ import { app } from 'electron'
 import { eq } from 'drizzle-orm'
 import { getDb } from './index'
 import { appSettings, prompts } from './schema'
-import { randomUUID } from 'crypto'
+// import { randomUUID } from 'crypto'
 
 // Wrap existing seeders with idempotent ensure-logic and version tracking
 
@@ -11,7 +11,7 @@ export function runDataMigrations(): void {
   const currentVersion = app.getVersion()
 
   // Read last applied app version
-  const last = db.select().from(appSettings).where(eq(appSettings.key, 'app.version')).all()
+  // const last = db.select().from(appSettings).where(eq(appSettings.key, 'app.version')).all()
 
   ensureDefaultPrompts()
 

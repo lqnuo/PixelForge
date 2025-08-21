@@ -123,40 +123,7 @@ export function registerIpcHandlers() {
     return filtered
   })
 
-  ipcMain.handle('job.create', async (evt, payload: { imageId: string; styleId?: string | null; aspectRatio: string }) => {
-    if (!isTrustedSender(evt)) return { ok: false, code: 'E_FORBIDDEN', message: 'untrusted sender' }
-    if (!payload?.imageId || typeof payload.imageId !== 'string') {
-      return { ok: false, code: 'E_VALIDATION', message: 'imageId required' }
-    }
-    if (!payload?.aspectRatio || typeof payload.aspectRatio !== 'string') {
-      return { ok: false, code: 'E_VALIDATION', message: 'aspectRatio required' }
-    }
-    if (!['1:1','3:4'].includes(payload.aspectRatio)) {
-      return { ok: false, code: 'E_VALIDATION', message: 'aspectRatio invalid' }
-    }
-    const existImg = db.select({ id: images.id }).from(images).where(eq(images.id, payload.imageId)).get()
-    if (!existImg) {
-      return { ok: false, code: 'E_NOT_FOUND', message: 'image not found' }
-    }
-    if (payload.styleId) {
-      const existStyle = db.select({ id: styles.id }).from(styles).where(eq(styles.id, payload.styleId)).get()
-      if (!existStyle) {
-        return { ok: false, code: 'E_NOT_FOUND', message: 'style not found' }
-      }
-    }
-    const id = randomUUID()
-    const row = {
-      id,
-      sourceImageId: payload.imageId,
-      styleId: payload.styleId ?? null,
-      aspectRatio: payload.aspectRatio,
-      status: 'queued',
-      error: null as string | null,
-    }
-    await withRetry(() => db.insert(jobs).values(row).run())
-    await enqueueJob(id)
-    return row
-  })
+
 
   ipcMain.handle(
     'job.bulkCreate',
