@@ -45,7 +45,7 @@ function onInputChange(evt: Event) {
 
 <template>
   <!-- 状态栏 -->
-  <div class="flex items-center justify-between p-4 bg-[hsl(var(--surface-secondary))]/50 rounded-xl border border-[hsl(var(--border-subtle))]">
+  <div class="flex items-center justify-between p-2 bg-[hsl(var(--surface-secondary))]/50 rounded-xl border border-[hsl(var(--border-subtle))]">
     <div class="flex items-center gap-4">
       <span class="text-[hsl(var(--text-primary))] font-medium">{{ total }} 个素材</span>
       <span v-if="searchQuery" class="text-[hsl(var(--text-secondary))]">搜索: "{{ searchQuery }}"</span>
@@ -154,7 +154,7 @@ function onInputChange(evt: Event) {
 
   <!-- 分页 -->
   <div v-if="pageCount > 1" class="mt-6">
-    <Pagination v-model:page="page" :total="total" :items-per-page="pageSize" :sibling-count="1" :show-edges="pageCount > 7">
+    <Pagination :page="page" @update:page="emit('update:page', $event)" :total="total" :items-per-page="pageSize" :sibling-count="1" :show-edges="pageCount > 7">
       <PaginationContent v-slot="{ items }" class="justify-center">
         <PaginationFirst v-if="pageCount > 7" />
         <PaginationPrevious />

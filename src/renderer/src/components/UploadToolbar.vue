@@ -73,7 +73,7 @@ function getCurrentGroupInfo() {
 
 <template>
   <!-- === 精致的工具栏 === -->
-  <div class="glass-panel p-6 rounded-2xl space-y-4">
+  <div class="glass-panel p-2 rounded-2xl space-y-4">
     <!-- 主要操作区 -->
     <div class="flex items-center justify-between">
       <div class="flex items-center gap-4">
