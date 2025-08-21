@@ -21,21 +21,22 @@
   --card-foreground: 220 30% 8%;
   --card-border: 220 14% 88%;
   
-  /* === Interactive Elements === */
-  --primary: 238 83% 58%;
+  /* === Interactive Elements (single-hue, no gradients) === */
+  /* Brand: Electric Violet — assertive yet refined */
+  --primary: 256 72% 56%;
   --primary-foreground: 0 0% 100%;
-  --primary-hover: 238 83% 52%;
-  --primary-active: 238 83% 46%;
+  --primary-hover: 256 72% 50%;
+  --primary-active: 256 72% 44%;
   
   /* === Secondary Actions === */
   --secondary: 220 14% 93%;
   --secondary-foreground: 220 30% 25%;
   --secondary-hover: 220 14% 88%;
   
-  /* === Accent & Highlight === */
-  --accent: 285 85% 58%;
+  /* === Accent & Highlight (unified with brand) === */
+  --accent: 256 72% 56%;
   --accent-foreground: 0 0% 100%;
-  --accent-hover: 285 85% 52%;
+  --accent-hover: 256 72% 50%;
   
   /* === Text Hierarchy === */
   --text-primary: 220 30% 8%;
@@ -57,7 +58,7 @@
   --border: 220 14% 88%;
   --border-subtle: 220 14% 93%;
   --input: 220 14% 88%;
-  --ring: 238 83% 58%;
+  --ring: 256 72% 56%;
   
   /* === Legacy Compatibility === */
   --muted: 220 14% 93%;
@@ -95,21 +96,21 @@
   --card-foreground: 220 20% 95%;
   --card-border: 220 18% 15%;
   
-  /* === Interactive Elements === */
-  --primary: 238 83% 65%;
+  /* === Interactive Elements (single-hue, no gradients) === */
+  --primary: 256 76% 64%;
   --primary-foreground: 220 30% 3%;
-  --primary-hover: 238 83% 70%;
-  --primary-active: 238 83% 75%;
+  --primary-hover: 256 76% 70%;
+  --primary-active: 256 76% 76%;
   
   /* === Secondary Actions === */
   --secondary: 220 18% 12%;
   --secondary-foreground: 220 20% 85%;
   --secondary-hover: 220 18% 15%;
   
-  /* === Accent & Highlight === */
-  --accent: 285 85% 65%;
+  /* === Accent & Highlight (unified with brand) === */
+  --accent: 256 76% 64%;
   --accent-foreground: 220 30% 3%;
-  --accent-hover: 285 85% 70%;
+  --accent-hover: 256 76% 70%;
   
   /* === Text Hierarchy === */
   --text-primary: 220 20% 95%;
@@ -131,7 +132,7 @@
   --border: 220 18% 15%;
   --border-subtle: 220 18% 12%;
   --input: 220 18% 15%;
-  --ring: 238 83% 65%;
+  --ring: 256 76% 64%;
   
   /* === Legacy Compatibility === */
   --muted: 220 18% 12%;
@@ -176,22 +177,11 @@ body { background-color: hsl(var(--background)); color: hsl(var(--foreground)); 
   pointer-events: none; 
   filter: grayscale(0.8);
 }
-.btn::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: -100%;
-  width: 100%;
-  height: 100%;
-  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
-  transition: left 600ms var(--ease-smooth);
-}
-.btn:hover::before {
-  left: 100%;
-}
+/* Remove glossy sweep; keep interaction crisp without gradients */
+.btn::before { content: none; }
 
 .btn-primary {
-  background: linear-gradient(135deg, hsl(var(--primary)), hsl(var(--accent)));
+  background-color: hsl(var(--primary));
   color: hsl(var(--primary-foreground));
   box-shadow: 0 2px 8px -2px hsl(var(--primary) / 0.3);
 }
@@ -225,7 +215,7 @@ body { background-color: hsl(var(--background)); color: hsl(var(--foreground)); 
 }
 
 .btn-danger {
-  background: linear-gradient(135deg, hsl(var(--danger)), hsl(0 84% 55%));
+  background-color: hsl(var(--danger));
   color: white;
   box-shadow: 0 2px 8px -2px hsl(var(--danger) / 0.3);
 }
@@ -330,7 +320,7 @@ body { background-color: hsl(var(--background)); color: hsl(var(--foreground)); 
 
 /* === Enhanced Badge Variants === */
 .badge-primary {
-  background: linear-gradient(135deg, hsl(var(--primary) / 0.1), hsl(var(--accent) / 0.1));
+  background-color: hsl(var(--primary) / 0.1);
   color: hsl(var(--primary));
   border-color: hsl(var(--primary) / 0.2);
 }
@@ -458,9 +448,7 @@ body { background-color: hsl(var(--background)); color: hsl(var(--foreground)); 
   left: 0;
   right: 0;
   bottom: 0;
-  background: linear-gradient(135deg, 
-    hsl(var(--primary) / 0.05), 
-    hsl(var(--accent) / 0.05));
+  background: hsl(var(--surface-secondary));
   opacity: 0;
   transition: opacity 250ms var(--ease-smooth);
 }
@@ -475,9 +463,7 @@ body { background-color: hsl(var(--background)); color: hsl(var(--foreground)); 
 }
 
 .nav-item-active { 
-  background: linear-gradient(135deg, 
-    hsl(var(--primary) / 0.1), 
-    hsl(var(--accent) / 0.08));
+  background-color: hsl(var(--primary) / 0.1);
   color: hsl(var(--primary));
   font-weight: 600;
   box-shadow: 
@@ -493,7 +479,7 @@ body { background-color: hsl(var(--background)); color: hsl(var(--foreground)); 
   transform: translateY(-50%);
   width: 3px;
   height: 20px;
-  background: linear-gradient(to bottom, hsl(var(--primary)), hsl(var(--accent)));
+  background: hsl(var(--primary));
   border-radius: 2px;
 }
 
@@ -643,25 +629,6 @@ body { background-color: hsl(var(--background)); color: hsl(var(--foreground)); 
   overflow: hidden; 
 }
 
-.text-gradient {
-  background: linear-gradient(135deg, hsl(var(--primary)), hsl(var(--accent)));
-  -webkit-background-clip: text;
-  background-clip: text;
-  -webkit-text-fill-color: transparent;
-}
-
-.border-gradient {
-  position: relative;
-  background: hsl(var(--surface-primary));
-}
-.border-gradient::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  padding: 1px;
-  background: linear-gradient(135deg, hsl(var(--primary)), hsl(var(--accent)));
-  border-radius: inherit;
-  mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
-  mask-composite: xor;
-  -webkit-mask-composite: xor;
-}
+/* Explicitly flat variants for any legacy “*gradient” class names */
+.text-gradient { color: hsl(var(--primary)); }
+.border-gradient { background: hsl(var(--surface-primary)); border: 1px solid hsl(var(--primary) / 0.3); }

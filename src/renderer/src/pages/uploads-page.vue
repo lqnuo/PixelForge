@@ -436,7 +436,7 @@ async function moveSingleToGroup(groupId: string | null) {
 </script>
 
 <template>
-  <div class="h-full flex flex-col bg-gradient-to-br from-[hsl(var(--background))] to-[hsl(var(--surface-secondary))] animate-fade-in overflow-hidden">
+  <div class="h-full flex flex-col bg-[hsl(var(--background))] animate-fade-in overflow-hidden">
     <!-- === 智能拖拽上传区域重设计 === -->
     <div 
       :class="[
@@ -479,7 +479,7 @@ async function moveSingleToGroup(groupId: string | null) {
         <!-- 分组管理头部 -->
         <div class="flex items-center justify-between">
           <div class="flex items-center gap-3">
-            <div class="h-8 w-8 rounded-lg bg-gradient-to-br from-[hsl(var(--primary))] to-[hsl(var(--accent))] flex items-center justify-center">
+            <div class="h-8 w-8 rounded-lg bg-[hsl(var(--primary))] flex items-center justify-center">
               <component :is="Grid3X3" class="h-4 w-4 text-white" />
             </div>
             <div>
@@ -500,14 +500,14 @@ async function moveSingleToGroup(groupId: string | null) {
             :class="[
               'group flex items-center justify-between p-4 rounded-xl transition-all duration-300 cursor-pointer border-2',
               currentGroupId === null 
-                ? 'bg-gradient-to-r from-[hsl(var(--primary))]/10 to-[hsl(var(--accent))]/10 border-[hsl(var(--primary))]/30' 
+                ? 'bg-[hsl(var(--primary))]/10 border-[hsl(var(--primary))]/30' 
                 : 'border-transparent hover:bg-[hsl(var(--surface-secondary))] hover:border-[hsl(var(--border-subtle))]'
             ]"
             @click="currentGroupId = null"
           >
             <div class="flex items-center gap-3">
               <div class="relative">
-                <div class="h-10 w-10 rounded-xl bg-gradient-to-br from-slate-500 to-slate-600 flex items-center justify-center shadow-floating">
+                <div class="h-10 w-10 rounded-xl bg-slate-600 flex items-center justify-center shadow-floating">
                   <component :is="Grid3X3" class="h-5 w-5 text-white" />
                 </div>
                 <div v-if="currentGroupId === null" class="absolute -top-1 -right-1 h-3 w-3 bg-[hsl(var(--primary))] rounded-full animate-pulse"></div>
@@ -524,14 +524,14 @@ async function moveSingleToGroup(groupId: string | null) {
             :class="[
               'group flex items-center justify-between p-4 rounded-xl transition-all duration-300 cursor-pointer border-2',
               currentGroupId === g.id 
-                ? 'bg-gradient-to-r from-[hsl(var(--primary))]/10 to-[hsl(var(--accent))]/10 border-[hsl(var(--primary))]/30' 
+                ? 'bg-[hsl(var(--primary))]/10 border-[hsl(var(--primary))]/30' 
                 : 'border-transparent hover:bg-[hsl(var(--surface-secondary))] hover:border-[hsl(var(--border-subtle))]'
             ]"
             @click="currentGroupId = g.id"
           >
             <div class="flex items-center gap-3 flex-1 min-w-0">
               <div class="relative">
-                <div class="h-10 w-10 rounded-xl bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center shadow-floating">
+                <div class="h-10 w-10 rounded-xl bg-[hsl(var(--primary))] flex items-center justify-center shadow-floating">
                   <component :is="Folder" class="h-5 w-5 text-white" />
                 </div>
                 <div v-if="currentGroupId === g.id" class="absolute -top-1 -right-1 h-3 w-3 bg-[hsl(var(--primary))] rounded-full animate-pulse"></div>
@@ -557,14 +557,14 @@ async function moveSingleToGroup(groupId: string | null) {
             :class="[
               'group flex items-center justify-between p-4 rounded-xl transition-all duration-300 cursor-pointer border-2',
               currentGroupId === UNASSIGNED 
-                ? 'bg-gradient-to-r from-orange-500/10 to-amber-500/10 border-orange-500/30' 
+                ? 'bg-orange-500/10 border-orange-500/30' 
                 : 'border-transparent hover:bg-[hsl(var(--surface-secondary))] hover:border-[hsl(var(--border-subtle))]'
             ]"
             @click="currentGroupId = UNASSIGNED as any"
           >
             <div class="flex items-center gap-3">
               <div class="relative">
-                <div class="h-10 w-10 rounded-xl bg-gradient-to-br from-orange-500 to-amber-600 flex items-center justify-center shadow-floating">
+                <div class="h-10 w-10 rounded-xl bg-orange-500 flex items-center justify-center shadow-floating">
                   <component :is="AlertCircle" class="h-5 w-5 text-white" />
                 </div>
                 <div v-if="currentGroupId === UNASSIGNED" class="absolute -top-1 -right-1 h-3 w-3 bg-orange-500 rounded-full animate-pulse"></div>
@@ -651,7 +651,7 @@ async function moveSingleToGroup(groupId: string | null) {
           </div>
 
           <!-- 批量操作条 -->
-          <div v-if="selected.size > 0" class="flex items-center justify-between p-4 bg-gradient-to-r from-[hsl(var(--primary))]/5 to-[hsl(var(--accent))]/5 rounded-xl border border-[hsl(var(--primary))]/20 animate-slide-in-from-top">
+          <div v-if="selected.size > 0" class="flex items-center justify-between p-4 bg-[hsl(var(--primary))]/5 rounded-xl border border-[hsl(var(--primary))]/20 animate-slide-in-from-top">
             <div class="flex items-center gap-4">
               <div class="flex items-center gap-2">
                 <div class="h-8 w-8 rounded-lg bg-[hsl(var(--primary))] flex items-center justify-center">
@@ -738,7 +738,7 @@ async function moveSingleToGroup(groupId: string | null) {
         </Accordion>
 
         <!-- === 生成操作条（点击后弹出确认框） === -->
-        <div v-if="selected.size > 0" class="glass-panel p-4 rounded-xl border border-[hsl(var(--primary))]/20 bg-gradient-to-r from-[hsl(var(--primary))]/5 to-[hsl(var(--accent))]/5 animate-slide-in-from-bottom">
+        <div v-if="selected.size > 0" class="glass-panel p-4 rounded-xl border border-[hsl(var(--primary))]/20 bg-[hsl(var(--primary))]/5 animate-slide-in-from-bottom">
           <div class="flex items-center justify-between">
             <div class="flex items-center gap-3">
               <Sparkles class="h-5 w-5 text-[hsl(var(--primary))]" />
@@ -950,7 +950,7 @@ async function moveSingleToGroup(groupId: string | null) {
           </Button>
           
           <!-- 图片信息 -->
-          <div class="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-6 rounded-b-xl text-white">
+          <div class="absolute bottom-0 left-0 right-0 bg-black/60 p-6 rounded-b-xl text-white">
             <h3 class="font-semibold text-lg mb-2">{{ previewImage.filename || previewImage.id }}</h3>
             <div class="flex items-center gap-4 text-sm text-white/80">
               <span>{{ formatFileSize(previewImage.sizeBytes) }}</span>

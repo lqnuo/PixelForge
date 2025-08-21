@@ -73,17 +73,17 @@ onMounted(() => {
 </script>
 
 <template>
-  <div class="h-full w-full flex bg-gradient-to-br from-[hsl(var(--background))] via-[hsl(var(--surface-secondary))] to-[hsl(var(--surface-tertiary))] animate-fade-in overflow-hidden">
+  <div class="h-full w-full flex bg-[hsl(var(--background))] animate-fade-in overflow-hidden">
     <!-- === 精简侧边栏 === -->
     <aside class="w-80 bg-[hsl(var(--surface-primary))] border-r border-[hsl(var(--border-subtle))] flex flex-col shadow-elevated backdrop-blur-xl">
       <!-- 品牌区域重设计 -->
-      <div class="p-6 border-b border-[hsl(var(--border-subtle))] bg-gradient-to-br from-[hsl(var(--primary))]/5 to-[hsl(var(--accent))]/5">
+      <div class="p-6 border-b border-[hsl(var(--border-subtle))] bg-[hsl(var(--primary))]/5">
         <div class="flex items-center gap-4">
           <div class="relative">
-            <div class="h-12 w-12 rounded-2xl bg-gradient-to-br from-[hsl(var(--primary))] to-[hsl(var(--accent))] flex items-center justify-center shadow-floating animate-glow">
+            <div class="h-12 w-12 rounded-2xl bg-[hsl(var(--primary))] flex items-center justify-center shadow-floating animate-glow">
               <span class="text-white font-bold text-xl tracking-tight">P</span>
             </div>
-            <div class="absolute -bottom-1 -right-1 h-4 w-4 bg-gradient-to-br from-emerald-400 to-emerald-500 rounded-full border-2 border-[hsl(var(--surface-primary))] animate-bounce-subtle"></div>
+            <div class="absolute -bottom-1 -right-1 h-4 w-4 bg-emerald-500 rounded-full border-2 border-[hsl(var(--surface-primary))] animate-bounce-subtle"></div>
           </div>
           <div class="flex-1">
             <h1 class="font-bold text-xl text-[hsl(var(--foreground))] tracking-tight text-gradient">
@@ -99,7 +99,7 @@ onMounted(() => {
       <!-- 导航菜单增强 -->
       <nav class="flex-1 p-6 space-y-3 overflow-y-auto">
         <div class="flex items-center gap-2 mb-6">
-          <div class="h-1 w-8 bg-gradient-to-r from-[hsl(var(--primary))] to-[hsl(var(--accent))] rounded-full"></div>
+          <div class="h-1 w-8 bg-[hsl(var(--primary))] rounded-full"></div>
           <div class="text-xs font-bold text-[hsl(var(--text-tertiary))] uppercase tracking-[0.1em]">
             创作空间
           </div>
@@ -148,7 +148,7 @@ onMounted(() => {
       </nav>
 
       <!-- 优雅的底部区域 -->
-      <div class="p-6 border-t border-[hsl(var(--border-subtle))] bg-gradient-to-t from-[hsl(var(--surface-secondary))]/30 to-transparent space-y-4">
+      <div class="p-6 border-t border-[hsl(var(--border-subtle))] bg-[hsl(var(--surface-secondary))]/30 space-y-4">
         <!-- 主题切换重设计 -->
         <Button
           variant="ghost"
@@ -163,14 +163,14 @@ onMounted(() => {
             </div>
             <span class="text-sm font-semibold">{{ themeLabel }}</span>
           </div>
-          <div class="h-2 w-2 rounded-full bg-gradient-to-r from-[hsl(var(--primary))] to-[hsl(var(--accent))] opacity-60 group-hover:opacity-100 transition-all animate-pulse"></div>
+          <div class="h-2 w-2 rounded-full bg-[hsl(var(--primary))] opacity-60 group-hover:opacity-100 transition-all animate-pulse"></div>
         </Button>
         
         <!-- 用户信息卡片重设计 -->
-        <div class="card-elevated p-4 bg-gradient-to-br from-[hsl(var(--surface-primary))] to-[hsl(var(--surface-secondary))] border border-[hsl(var(--border-subtle))]">
+        <div class="card-elevated p-4 bg-[hsl(var(--surface-primary))] border border-[hsl(var(--border-subtle))]">
           <div class="flex items-center gap-3">
             <div class="relative">
-              <div class="h-10 w-10 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center shadow-floating">
+              <div class="h-10 w-10 rounded-xl bg-emerald-500 flex items-center justify-center shadow-floating">
                 <User class="h-5 w-5 text-white" />
               </div>
               <div class="absolute -top-1 -right-1 h-3 w-3 bg-emerald-400 rounded-full border border-[hsl(var(--surface-primary))] animate-pulse"></div>
@@ -233,18 +233,14 @@ onMounted(() => {
   left: 0;
   right: 0;
   bottom: 0;
-  background: linear-gradient(135deg, 
-    hsl(var(--primary) / 0.1) 0%, 
-    hsl(var(--accent) / 0.1) 100%);
+  background: hsl(var(--primary) / 0.08);
   border-radius: inherit;
   z-index: -1;
   animation: fadeIn 0.2s ease;
 }
 
-/* 品牌区域渐变背景 */
+/* 品牌区域扁平背景（无渐变） */
 .brand-gradient {
-  background: linear-gradient(135deg, 
-    hsl(var(--primary) / 0.05) 0%, 
-    hsl(var(--accent) / 0.05) 100%);
+  background-color: hsl(var(--primary) / 0.05);
 }
 </style>

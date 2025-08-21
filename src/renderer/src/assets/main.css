@@ -72,19 +72,14 @@ code {
   font-weight: 600;
 }
 
+/* Flatten legacy gradient text to solid color */
 .react {
-  background: -webkit-linear-gradient(315deg, #087ea4 55%, #7c93ee);
-  background-clip: text;
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
+  color: #4f46e5; /* close to brand primary */
   font-weight: 700;
 }
 
 .ts {
-  background: -webkit-linear-gradient(315deg, #3178c6 45%, #f0dc4e);
-  background-clip: text;
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
+  color: #2563eb; /* solid blue fallback (not used in app) */
   font-weight: 700;
 }
 
