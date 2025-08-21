@@ -150,7 +150,7 @@ onMounted(load)
               <label class="flex flex-col gap-1">
                 <span class="text-sm text-[hsl(var(--muted-foreground))]">Endpoint</span>
                 <Input v-model="form.qwen.endpoint" type="text" />
-                <span class="text-xs text-[hsl(var(--muted-foreground))]">默认：https://dashscope.aliyuncs.com/api/v1/services/images/editing</span>
+                <span class="text-xs text-gray-500 dark:text-gray-400">默认：https://dashscope.aliyuncs.com/api/v1/services/images/editing</span>
               </label>
               <label class="flex flex-col gap-1">
                 <span class="text-sm text-[hsl(var(--muted-foreground))]">Model</span>
@@ -172,7 +172,7 @@ onMounted(load)
               <label class="flex flex-col gap-1">
                 <span class="text-sm text-[hsl(var(--muted-foreground))]">Base URL</span>
                 <Input v-model="form.openai.baseUrl" type="text" />
-                <span class="text-xs text-[hsl(var(--muted-foreground))]">默认：https://api.openai.com/v1（如走代理可改为自定义网关）</span>
+                <span class="text-xs text-gray-500 dark:text-gray-400">默认：https://api.openai.com/v1（如走代理可改为自定义网关）</span>
               </label>
               <label class="flex flex-col gap-1">
                 <span class="text-sm text-[hsl(var(--muted-foreground))]">Image Model</span>
@@ -194,7 +194,7 @@ onMounted(load)
               <label class="flex flex-col gap-1">
                 <span class="text-sm text-[hsl(var(--muted-foreground))]">Base URL</span>
                 <Input v-model="form.deepseek.baseUrl" type="text" />
-                <span class="text-xs text-[hsl(var(--muted-foreground))]">默认：https://api.deepseek.com/v1</span>
+                <span class="text-xs text-gray-500 dark:text-gray-400">默认：https://api.deepseek.com/v1</span>
               </label>
               <label class="flex flex-col gap-1">
                 <span class="text-sm text-[hsl(var(--muted-foreground))]">Image Model</span>
@@ -215,7 +215,7 @@ onMounted(load)
             </div>
           </div>
 
-          <div class="text-xs text-[hsl(var(--muted-foreground))]">
+          <div class="text-xs text-gray-500 dark:text-gray-400">
             说明：这里只做多家模型的配置管理（不发起任何请求）。后续需要时可在任务执行里按所选供应商读取对应配置。
           </div>
         </section>

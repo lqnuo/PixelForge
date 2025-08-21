@@ -629,6 +629,8 @@ body { background-color: hsl(var(--background)); color: hsl(var(--foreground)); 
   overflow: hidden; 
 }
 
-/* Explicitly flat variants for any legacy “*gradient” class names */
+/* Explicitly flat variants for any legacy "*gradient" class names */
 .text-gradient { color: hsl(var(--primary)); }
 .border-gradient { background: hsl(var(--surface-primary)); border: 1px solid hsl(var(--primary) / 0.3); }
+
+
