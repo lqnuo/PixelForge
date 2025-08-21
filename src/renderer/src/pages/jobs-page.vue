@@ -334,11 +334,11 @@ function getStatusClass(status: string) {
                       <div v-else class="h-10 w-10 rounded bg-[hsl(var(--muted))]" />
                     </div>
                   </PopoverTrigger>
-                  <PopoverContent :side="'right'" :align="'start'" class="p-2 w-auto" @mouseenter="hoverSource = row.id" @mouseleave="hoverSource = null">
+                  <PopoverContent :side="'right'" :align="'start'" class="p-0 w-auto overflow-hidden" @mouseenter="hoverSource = row.id" @mouseleave="hoverSource = null">
                     <img
                       v-if="imageMap.get(row.sourceImageId)?.previewBase64"
                       :src="dataUrl(imageMap.get(row.sourceImageId)!.mimeType, imageMap.get(row.sourceImageId)!.previewBase64)"
-                      class="max-w-[min(80vw,560px)] max-h-[min(80vh,560px)] object-contain rounded"
+                      class="max-w-[min(80vw,560px)] max-h-[min(80vh,560px)] object-contain"
                     />
                   </PopoverContent>
                 </Popover>
@@ -357,7 +357,7 @@ function getStatusClass(status: string) {
                       <img :src="dataUrl(row.firstResult!.mimeType, row.firstResult!.previewBase64)" class="h-10 w-10 object-cover rounded cursor-zoom-in" />
                     </div>
                   </PopoverTrigger>
-                  <PopoverContent :side="'right'" :align="'start'" class="p-2 w-auto" @mouseenter="hoverResult = row.id" @mouseleave="hoverResult = null">
+                  <PopoverContent :side="'right'" :align="'start'" class="p-0 w-auto overflow-hidden" @mouseenter="hoverResult = row.id" @mouseleave="hoverResult = null">
                     <img
                       :src="dataUrl(row.firstResult!.mimeType, row.firstResult!.previewBase64)"
                       class="max-w-[min(80vw,560px)] max-h-[min(80vh,560px)] object-contain rounded"
