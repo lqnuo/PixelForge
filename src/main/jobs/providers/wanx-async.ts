@@ -48,50 +48,26 @@ export class WanxAsyncProvider extends BaseImageProvider {
       }
     }
 
-    const _fetch = this.getFetch()
-
-    // Log request details for debugging
     logger.info('Wanx async outpaint task creation', {
-      endpoint,
       model,
       size: `${size.w}x${size.h}`,
       aspect,
-      promptText: finalPromptText,
-      payloadKeys: Object.keys(payload),
       inputImageLength: input.length
     })
 
     // 第一步：创建异步任务
-    const taskRes = await _fetch(endpoint, {
+    const taskResponse = await this.makeRequest<WanxAsyncTaskResponse>({
       method: 'POST',
+      url: endpoint,
       headers: {
         'X-DashScope-Async': 'enable',
         'Content-Type': 'application/json',
         Authorization: `Bearer ${apiKey}`
       },
-      body: JSON.stringify(payload)
+      data: payload
     })
 
-    if (!taskRes.ok) {
-      const text = await taskRes.text().catch(() => '')
-      let responseData = null
-      try {
-        responseData = JSON.parse(text)
-      } catch {
-        // text is not JSON
-      }
-      
-      logger.error('Wanx async task creation failed', { 
-        endpoint,
-        status: taskRes.status,
-        statusText: taskRes.statusText,
-        responseText: text,
-        responseData
-      })
-      throw new Error(`WANX_ASYNC_CREATE_FAILED_${taskRes.status}`)
-    }
-
-    const taskData = (await taskRes.json()) as WanxAsyncTaskResponse
+    const taskData = taskResponse.data
     const taskId = taskData?.output?.task_id
 
     if (!taskId) {
@@ -113,7 +89,6 @@ export class WanxAsyncProvider extends BaseImageProvider {
     const queryEndpoint = 'https://dashscope.aliyuncs.com/api/v1/tasks'
     const maxAttempts = 30 // 最多等待5分钟 (30 * 10秒)
     let attempts = 0
-    const _fetch = this.getFetch()
 
     while (attempts < maxAttempts) {
       attempts++
@@ -123,70 +98,64 @@ export class WanxAsyncProvider extends BaseImageProvider {
 
       logger.info('Wanx async task polling', { taskId, attempt: attempts, maxAttempts })
 
-      const queryRes = await _fetch(`${queryEndpoint}/${taskId}`, {
-        method: 'GET',
-        headers: {
-          'Authorization': `Bearer ${apiKey}`
-        }
-      })
+      try {
+        const queryResponse = await this.makeRequest<WanxAsyncResultResponse>({
+          method: 'GET',
+          url: `${queryEndpoint}/${taskId}`,
+          headers: {
+            'Authorization': `Bearer ${apiKey}`
+          }
+        })
 
-      if (!queryRes.ok) {
+        const queryData = queryResponse.data
+        const taskStatus = queryData?.output?.task_status
+
+        logger.info('Wanx async task status', { 
+          taskId, 
+          attempt: attempts, 
+          status: taskStatus,
+          hasResults: !!queryData?.output?.results?.length
+        })
+
+        if (taskStatus === 'SUCCEEDED') {
+          const imageUrl = queryData?.output?.results?.[0]?.url
+          if (!imageUrl) {
+            logger.error('Wanx async task succeeded but missing image URL', { 
+              taskId, 
+              response: queryData 
+            })
+            throw new Error('WANX_ASYNC_MISSING_IMAGE_URL')
+          }
+
+          logger.info('Wanx async task completed, downloading image', { taskId, imageUrl })
+
+          // 下载图片
+          const { buffer: imageBuffer, mime } = await this.downloadImage(imageUrl)
+          
+          return { 
+            mime, 
+            data: imageBuffer, 
+            width: size.w, 
+            height: size.h 
+          }
+        } else if (taskStatus === 'FAILED') {
+          logger.error('Wanx async task failed', { taskId, response: queryData })
+          throw new Error('WANX_ASYNC_TASK_FAILED')
+        }
+
+        // 任务还在进行中，继续等待
+      } catch (error) {
         logger.warn('Wanx async task query failed', { 
           taskId, 
           attempt: attempts, 
-          status: queryRes.status 
+          error: error instanceof Error ? error.message : String(error)
         })
-        continue
-      }
-
-      const queryData = (await queryRes.json()) as WanxAsyncResultResponse
-      const taskStatus = queryData?.output?.task_status
-
-      logger.info('Wanx async task status', { 
-        taskId, 
-        attempt: attempts, 
-        status: taskStatus,
-        hasResults: !!queryData?.output?.results?.length
-      })
-
-      if (taskStatus === 'SUCCEEDED') {
-        const imageUrl = queryData?.output?.results?.[0]?.url
-        if (!imageUrl) {
-          logger.error('Wanx async task succeeded but missing image URL', { 
-            taskId, 
-            response: queryData 
-          })
-          throw new Error('WANX_ASYNC_MISSING_IMAGE_URL')
-        }
-
-        logger.info('Wanx async task completed, downloading image', { taskId, imageUrl })
-
-        // 下载图片
-        const imageRes = await _fetch(imageUrl)
-        if (!imageRes.ok) {
-          logger.error('Failed to download async image from Wanx URL', { 
-            taskId, 
-            url: imageUrl, 
-            status: imageRes.status 
-          })
-          throw new Error('WANX_ASYNC_IMAGE_DOWNLOAD_FAILED')
-        }
-
-        const imageBuffer = Buffer.from(await imageRes.arrayBuffer())
-        const mime = imageRes.headers.get('content-type') || 'image/png'
         
-        return { 
-          mime, 
-          data: imageBuffer, 
-          width: size.w, 
-          height: size.h 
+        // 如果不是最后一次尝试，继续轮询
+        if (attempts === maxAttempts) {
+          throw error
         }
-      } else if (taskStatus === 'FAILED') {
-        logger.error('Wanx async task failed', { taskId, response: queryData })
-        throw new Error('WANX_ASYNC_TASK_FAILED')
       }
-
-      // 任务还在进行中，继续等待
     }
 
     // 超时

@@ -1,3 +1,6 @@
+import { AxiosRequestConfig, AxiosResponse } from 'axios'
+import axiosInstance from './axios-instance'
+
 export type TargetAspect = '1:1' | '3:4'
 
 export interface ImageGenerationResult {
@@ -28,11 +31,20 @@ export function calcTargetSize(aspect: TargetAspect): TargetSize {
 export abstract class BaseImageProvider {
   abstract processImage(options: ImageGenerationOptions): Promise<ImageGenerationResult>
   
-  protected getFetch(): any {
-    const _fetch: any = (globalThis as any).fetch
-    if (typeof _fetch !== 'function') {
-      throw new Error('FETCH_NOT_AVAILABLE')
-    }
-    return _fetch
+  protected async makeRequest<T = any>(config: AxiosRequestConfig): Promise<AxiosResponse<T>> {
+    return await axiosInstance(config)
+  }
+
+  protected async downloadImage(url: string): Promise<{ buffer: Buffer; mime: string }> {
+    const response = await this.makeRequest<ArrayBuffer>({
+      method: 'GET',
+      url,
+      responseType: 'arraybuffer'
+    })
+
+    const buffer = Buffer.from(response.data)
+    const mime = response.headers['content-type'] || 'image/png'
+
+    return { buffer, mime }
   }
 }
