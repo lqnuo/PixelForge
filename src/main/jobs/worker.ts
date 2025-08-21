@@ -1,5 +1,5 @@
 import { getDb } from '../db'
-import { jobs, images, results } from '../db/schema'
+import { jobs, images, results, prompts } from '../db/schema'
 import { eq } from 'drizzle-orm'
 import { randomUUID } from 'crypto'
 import { BrowserWindow } from 'electron'
@@ -56,10 +56,15 @@ async function processJob(jobId: string) {
       return
     }
 
+    // Get the prompt text from database
+    const prompt = db.select().from(prompts).where(eq(prompts.id, job.promptId)).get()
+    const promptText = prompt?.prompt || undefined
+
     // Perform outpainting via Qwen Image Edit
     const { data, mime, width, height } = await outpaintWithQwen(
       (img.dataBlob as unknown as Buffer) || Buffer.alloc(0),
-      (job.aspectRatio as '1:1' | '3:4')
+      (job.aspectRatio as '1:1' | '3:4'),
+      promptText
     )
     
     const rid = randomUUID()

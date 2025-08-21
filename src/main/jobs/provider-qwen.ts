@@ -12,7 +12,8 @@ function calcTargetSize(aspect: TargetAspect): { w: number; h: number } {
 
 export async function outpaintWithQwen(
   input: Buffer,
-  aspect: TargetAspect
+  aspect: TargetAspect,
+  promptText?: string
 ): Promise<{ mime: string; data: Buffer; width?: number; height?: number }> {
   const apiKey = getSetting('dashscope_api_key') || ''
   if (!apiKey) throw new Error('MISSING_API_KEY')
@@ -28,10 +29,8 @@ export async function outpaintWithQwen(
 
   const size = calcTargetSize(aspect)
 
-  // Generate outpainting prompt based on aspect ratio
-  const promptText = aspect === '1:1' 
-    ? `将图片扩展为正方形格式 (${size.w}x${size.h})，保持原图内容完整，自然地扩展背景和周围环境`
-    : `将图片扩展为竖版格式 (${size.w}x${size.h})，保持原图内容完整，自然地扩展背景和周围环境`
+  // Use provided prompt text or fallback to generic default
+  const finalPromptText = promptText || '扩展图片，保持原图内容完整，自然地扩展背景和周围环境'
 
   const payload: any = {
     model,
@@ -44,7 +43,7 @@ export async function outpaintWithQwen(
               image: `data:image/png;base64,${input.toString('base64')}`
             },
             {
-              text: promptText
+              text: finalPromptText
             }
           ]
         }
@@ -67,7 +66,7 @@ export async function outpaintWithQwen(
     model,
     size: `${size.w}x${size.h}`,
     aspect,
-    promptText,
+    promptText: finalPromptText,
     payloadKeys: Object.keys(payload),
     inputImageLength: input.length
   })
