@@ -18,7 +18,7 @@ const savedHint = ref('')
 const form = reactive({
   qwen: {
     apiKey: '',
-    endpoint: 'https://dashscope.aliyuncs.com/api/v1/services/images/editing',
+    endpoint: 'https://dashscope.aliyuncs.com/api/v1/services/aigc/multimodal-generation/generation',
     model: 'qwen-image-edit'
   },
   openai: {
@@ -63,7 +63,7 @@ async function load() {
     // Qwen
     form.qwen.apiKey = all['dashscope_api_key'] || ''
     form.qwen.endpoint =
-      all['dashscope_endpoint'] || 'https://dashscope.aliyuncs.com/api/v1/services/images/editing'
+      all['dashscope_endpoint'] || 'https://dashscope.aliyuncs.com/api/v1/services/aigc/multimodal-generation/generation'
     form.qwen.model = all['dashscope_model'] || 'qwen-image-edit'
     // OpenAI
     form.openai.apiKey = all['openai_api_key'] || ''

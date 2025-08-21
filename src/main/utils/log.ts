@@ -30,10 +30,24 @@ function rotateIfNeeded(file: string) {
 }
 
 function write(level: Level, msg: string, meta?: any) {
+  const timestamp = new Date().toISOString()
+  const metaStr = meta ? ' ' + safeJson(meta) : ''
+  const line = `${timestamp} [${level.toUpperCase()}] ${msg}${metaStr}\n`
+  
+  // Write to file
   const file = logFilePath()
   rotateIfNeeded(file)
-  const line = `${new Date().toISOString()} [${level.toUpperCase()}] ${msg}$${meta ? ' ' + safeJson(meta) : ''}\n`
   appendFileSync(file, line, { encoding: 'utf8' })
+  
+  // Also output to console
+  const consoleMsg = `[${level.toUpperCase()}] ${msg}`
+  if (level === 'error') {
+    console.error(consoleMsg, meta || '')
+  } else if (level === 'warn') {
+    console.warn(consoleMsg, meta || '')
+  } else {
+    console.log(consoleMsg, meta || '')
+  }
 }
 
 function safeJson(x: unknown) {

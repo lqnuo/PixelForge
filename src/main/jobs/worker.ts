@@ -63,6 +63,9 @@ async function processJob(jobId: string) {
     )
     
     const rid = randomUUID()
+    // Convert image data to base64 for preview
+    const previewBase64 = data.toString('base64')
+    
     await withRetry(() =>
       db
         .insert(results)
@@ -74,7 +77,7 @@ async function processJob(jobId: string) {
           width: width ?? null,
           height: height ?? null,
           dataBlob: data,
-          previewBase64: null,
+          previewBase64: previewBase64,
         })
         .run()
     )

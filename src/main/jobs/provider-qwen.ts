@@ -1,5 +1,5 @@
 import { logger } from '../utils/log'
-import { getSetting } from '../utils/settings'
+import { getSetting, setSetting } from '../utils/settings'
 
 type TargetAspect = '1:1' | '3:4'
 
@@ -16,21 +16,43 @@ export async function outpaintWithQwen(
 ): Promise<{ mime: string; data: Buffer; width?: number; height?: number }> {
   const apiKey = getSetting('dashscope_api_key') || ''
   if (!apiKey) throw new Error('MISSING_API_KEY')
-  const endpoint =
-    getSetting('dashscope_endpoint')?.trim() ||
-    'https://dashscope.aliyuncs.com/api/v1/services/images/editing'
+  let endpoint = getSetting('dashscope_endpoint')?.trim() ||
+    'https://dashscope.aliyuncs.com/api/v1/services/aigc/multimodal-generation/generation'
+  
+  // Auto-migrate old endpoint to new endpoint
+  if (endpoint === 'https://dashscope.aliyuncs.com/api/v1/services/images/editing') {
+    endpoint = 'https://dashscope.aliyuncs.com/api/v1/services/aigc/multimodal-generation/generation'
+    logger.info('Auto-migrated Qwen endpoint from old to new format')
+  }
   const model = getSetting('dashscope_model')?.trim() || 'qwen-image-edit'
 
   const size = calcTargetSize(aspect)
 
+  // Generate outpainting prompt based on aspect ratio
+  const promptText = aspect === '1:1' 
+    ? `将图片扩展为正方形格式 (${size.w}x${size.h})，保持原图内容完整，自然地扩展背景和周围环境`
+    : `将图片扩展为竖版格式 (${size.w}x${size.h})，保持原图内容完整，自然地扩展背景和周围环境`
+
   const payload: any = {
     model,
-    input_image: input.toString('base64'),
-    edit_type: 'outpainting',
-    size: `${size.w}x${size.h}`,
+    input: {
+      messages: [
+        {
+          role: 'user',
+          content: [
+            {
+              image: `data:image/png;base64,${input.toString('base64')}`
+            },
+            {
+              text: promptText
+            }
+          ]
+        }
+      ]
+    },
     parameters: {
-      // Adjust strategy as needed per API spec
-      outpainting_mode: 'balanced'
+      negative_prompt: '',
+      watermark: false
     }
   }
 
@@ -38,6 +60,18 @@ export async function outpaintWithQwen(
   if (typeof _fetch !== 'function') {
     throw new Error('FETCH_NOT_AVAILABLE')
   }
+
+  // Log request details for debugging
+  logger.info('Qwen outpaint request', {
+    endpoint,
+    model,
+    size: `${size.w}x${size.h}`,
+    aspect,
+    promptText,
+    payloadKeys: Object.keys(payload),
+    inputImageLength: input.length
+  })
+
   const res = await _fetch(endpoint, {
     method: 'POST',
     headers: {
@@ -49,18 +83,69 @@ export async function outpaintWithQwen(
 
   if (!res.ok) {
     const text = await res.text().catch(() => '')
-    logger.error('Qwen outpaint request failed', { status: res.status, text })
+    let responseData = null
+    try {
+      responseData = JSON.parse(text)
+    } catch {
+      // text is not JSON
+    }
+    
+    logger.error('Qwen outpaint request failed', { 
+      endpoint,
+      status: res.status,
+      statusText: res.statusText,
+      responseText: text,
+      responseData,
+      requestPayload: {
+        model,
+        inputMessageCount: payload.input?.messages?.length,
+        contentCount: payload.input?.messages?.[0]?.content?.length,
+        parameters: payload.parameters
+      }
+    })
     throw new Error(`QWEN_HTTP_${res.status}`)
   }
   const data = (await res.json()) as any
-  // Expecting { output: { image_base64: '...', mime_type?: 'image/png', width?, height? } }
-  const imageBase64 = data?.output?.image_base64 || data?.data || data?.image || null
-  if (!imageBase64) {
-    logger.error('Qwen outpaint response missing image')
+  
+  // Log successful response for debugging
+  logger.info('Qwen outpaint response received', {
+    responseKeys: Object.keys(data),
+    outputKeys: data.output ? Object.keys(data.output) : null,
+    choicesCount: data?.output?.choices?.length,
+    usageKeys: data.usage ? Object.keys(data.usage) : null,
+    usage: data.usage
+  })
+  
+  // Handle the actual API response format:
+  // { output: { choices: [{ message: { content: [{ image: "url" }] } }] }, usage: { width, height } }
+  const imageUrl = data?.output?.choices?.[0]?.message?.content?.[0]?.image
+  if (!imageUrl) {
+    logger.error('Qwen outpaint response missing image URL', { 
+      response: data,
+      outputStructure: {
+        hasOutput: !!data.output,
+        hasChoices: !!data?.output?.choices,
+        choicesLength: data?.output?.choices?.length,
+        firstChoice: data?.output?.choices?.[0],
+        messageContent: data?.output?.choices?.[0]?.message?.content
+      }
+    })
     throw new Error('QWEN_INVALID_RESPONSE')
   }
-  const mime = data?.output?.mime_type || 'image/png'
-  const width = data?.output?.width
-  const height = data?.output?.height
-  return { mime, data: Buffer.from(imageBase64, 'base64'), width, height }
+
+  logger.info('Extracted image URL from response', { imageUrl })
+
+  // Download the image from the URL
+  const imageRes = await _fetch(imageUrl)
+  if (!imageRes.ok) {
+    logger.error('Failed to download image from Qwen URL', { url: imageUrl, status: imageRes.status })
+    throw new Error('QWEN_IMAGE_DOWNLOAD_FAILED')
+  }
+
+  const imageBuffer = Buffer.from(await imageRes.arrayBuffer())
+  const mime = imageRes.headers.get('content-type') || 'image/png'
+  const width = data?.usage?.width
+  const height = data?.usage?.height
+  
+  return { mime, data: imageBuffer, width, height }
 }

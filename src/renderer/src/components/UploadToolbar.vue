@@ -49,6 +49,7 @@ const moveTargetGroupIdStr = computed({
 })
 
 function onInputChange(evt: Event) {
+  console.log('UploadToolbar: File input changed', evt)
   emit('upload', evt)
 }
 
@@ -78,12 +79,12 @@ function getCurrentGroupInfo() {
     <div class="flex items-center justify-between">
       <div class="flex items-center gap-4">
         <!-- 上传按钮重设计 -->
-        <label class="cursor-pointer">
-          <Button class="btn-primary shadow-floating">
+        <label for="upload-input" class="cursor-pointer">
+          <input id="upload-input" type="file" multiple accept="image/*" class="hidden" @change="onInputChange" />
+          <div class="btn-primary shadow-floating inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 h-10 px-4 py-2">
             <Upload class="h-5 w-5 mr-2" />
             <span class="font-semibold">上传素材</span>
-          </Button>
-          <input type="file" multiple accept="image/*" class="hidden" @change="onInputChange" />
+          </div>
         </label>
         
         <!-- AI 生成按钮 -->

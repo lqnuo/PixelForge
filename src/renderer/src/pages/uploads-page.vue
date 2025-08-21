@@ -22,8 +22,6 @@ const groupCounts = ref<Record<string, number>>({})
 const allCount = ref<number>(0)
 const UNASSIGNED = '__UNASSIGNED__'
 const selected = ref<Set<string>>(new Set())
-const selectedModelKey = ref<string | null>(null)
-const selectedPromptId = ref<string | null>(null)
 const currentGroupId = ref<string | null>(null)
 const moveTargetGroupId = ref<string | null>(null)
 
@@ -168,13 +166,17 @@ async function reloadGroupCounts() {
 
 // === 事件处理函数 ===
 async function uploadFiles(files: File[]) {
+  console.log('uploadFiles called with:', files)
   const items: any[] = []
   for (const f of files) {
+    console.log('Processing file:', f.name)
     const base64 = await fileToBase64(f)
     const preview = await resizePreview(f, 320)
     items.push({ filename: f.name, mimeType: f.type || 'image/png', sizeBytes: f.size, dataBase64: base64, previewBase64: preview })
   }
+  console.log('Uploading items:', items)
   const inserted = await bridge.image.upload(items)
+  console.log('Upload result:', inserted)
   if (currentGroupId.value && (currentGroupId.value as any) !== UNASSIGNED) {
     try {
       const ids = Array.isArray(inserted) ? inserted.map((r:any) => r.id) : []
@@ -187,16 +189,16 @@ async function uploadFiles(files: File[]) {
   await reloadGroupCounts()
 }
 
-async function generateSelected() {
+async function generateSelected(selectedModelKey: string, selectedPromptId: string) {
   if (selected.value.size === 0) return
-  if (!selectedModelKey.value || !selectedPromptId.value) return
+  if (!selectedModelKey || !selectedPromptId) return
   isGenerating.value = true
   try {
     const ids = Array.from(selected.value)
     await bridge.job.bulkCreate({ 
       imageIds: ids, 
-      modelKey: selectedModelKey.value,
-      promptId: selectedPromptId.value,
+      modelKey: selectedModelKey,
+      promptId: selectedPromptId,
       aspectRatio: aspect.value 
     })
     confirmOpen.value = false
@@ -306,8 +308,10 @@ function handleDrop(e: DragEvent) {
 }
 
 async function handleUpload(evt: Event) {
+  console.log('handleUpload called', evt)
   const input = evt.target as HTMLInputElement
   const files = input.files
+  console.log('Selected files:', files)
   if (!files || files.length === 0) return
   await uploadFiles(Array.from(files))
   input.value = ''

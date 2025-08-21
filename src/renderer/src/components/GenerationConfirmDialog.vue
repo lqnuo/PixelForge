@@ -15,7 +15,7 @@ interface Props {
 interface Emits {
   (e: 'update:open', value: boolean): void
   (e: 'update:aspect', value: '1:1' | '3:4'): void
-  (e: 'generate'): void
+  (e: 'generate', modelKey: string, promptId: string): void
 }
 
 
@@ -44,7 +44,8 @@ function selectAspect(aspect: '1:1' | '3:4') {
 }
 
 function handleGenerate() {
-  emit('generate')
+  if (!selectedModelKey.value || !selectedPromptId.value) return
+  emit('generate', selectedModelKey.value, selectedPromptId.value)
 }
 
 function onOpenChange(open: boolean) {
