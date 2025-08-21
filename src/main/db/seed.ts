@@ -60,7 +60,7 @@ function ensureDefaultPrompts(): void {
   ]
 
   for (const p of DEFAULTS) {
-    const found = db.select().from(prompts).where(eq(prompts.id, p.id)).all()
+    const found = db.select().from(prompts).where(eq(prompts.name, p.name)).all()
     if (found.length === 0) {
       db.insert(prompts).values(p).run()
     } else {
