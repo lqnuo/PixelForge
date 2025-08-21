@@ -20,6 +20,8 @@ interface Props {
   groupCounts: Record<string, number>
   moveTargetGroupId: string | null
   UNASSIGNED: string
+  isUploading: boolean
+  uploadProgress: string
 }
 
 interface Emits {
@@ -79,11 +81,12 @@ function getCurrentGroupInfo() {
     <div class="flex items-center justify-between">
       <div class="flex items-center gap-4">
         <!-- 上传按钮重设计 -->
-        <label for="upload-input" class="cursor-pointer">
-          <input id="upload-input" type="file" multiple accept="image/*" class="hidden" @change="onInputChange" />
-          <div class="btn-primary shadow-floating inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 h-10 px-4 py-2">
-            <Upload class="h-5 w-5 mr-2" />
-            <span class="font-semibold">上传素材</span>
+        <label for="upload-input" :class="['cursor-pointer', { 'pointer-events-none': isUploading }]">
+          <input id="upload-input" type="file" multiple accept="image/*" class="hidden" @change="onInputChange" :disabled="isUploading" />
+          <div :class="['btn-primary shadow-floating inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 h-10 px-4 py-2', { 'opacity-75': isUploading }]">
+            <div v-if="isUploading" class="spinner h-4 w-4 mr-2"></div>
+            <Upload v-else class="h-5 w-5 mr-2" />
+            <span class="font-semibold">{{ isUploading ? '上传中...' : '上传素材' }}</span>
           </div>
         </label>
         
@@ -136,6 +139,14 @@ function getCurrentGroupInfo() {
             <Grid class="h-5 w-5" />
           </Button>
         </div>
+      </div>
+    </div>
+
+    <!-- 上传进度条 -->
+    <div v-if="isUploading && uploadProgress" class="p-3 bg-blue-50 dark:bg-blue-950/20 rounded-xl border border-blue-200 dark:border-blue-800/30 animate-slide-in-from-top">
+      <div class="flex items-center gap-3">
+        <div class="spinner h-4 w-4 text-blue-600"></div>
+        <span class="text-sm font-medium text-blue-700 dark:text-blue-300">{{ uploadProgress }}</span>
       </div>
     </div>
 

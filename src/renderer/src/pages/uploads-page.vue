@@ -2,7 +2,8 @@
 import { onMounted, ref, computed, watch } from 'vue'
 import { Upload, Sparkles } from 'lucide-vue-next'
 import { Button } from '@/components/ui/button'
-import type { ImageItem, StyleItem, GroupItem, ModelItem, PromptItem } from '@/types'
+import { toast } from 'vue-sonner'
+import type { ImageItem, StyleItem, GroupItem } from '@/types'
 import { resizePreview, fileToBase64 } from '@/utils/image'
 import GroupSidebar from '@/components/GroupSidebar.vue'
 import UploadToolbar from '@/components/UploadToolbar.vue'
@@ -24,6 +25,10 @@ const UNASSIGNED = '__UNASSIGNED__'
 const selected = ref<Set<string>>(new Set())
 const currentGroupId = ref<string | null>(null)
 const moveTargetGroupId = ref<string | null>(null)
+
+// === 上传状态 ===
+const isUploading = ref(false)
+const uploadProgress = ref('')
 
 // 分组对话框状态
 const createOpen = ref(false)
@@ -166,34 +171,71 @@ async function reloadGroupCounts() {
 
 // === 事件处理函数 ===
 async function uploadFiles(files: File[]) {
-  console.log('uploadFiles called with:', files)
-  const items: any[] = []
-  for (const f of files) {
-    console.log('Processing file:', f.name)
-    const base64 = await fileToBase64(f)
-    const preview = await resizePreview(f, 320)
-    items.push({ filename: f.name, mimeType: f.type || 'image/png', sizeBytes: f.size, dataBase64: base64, previewBase64: preview })
-  }
-  console.log('Uploading items:', items)
-  const inserted = await bridge.image.upload(items)
-  console.log('Upload result:', inserted)
-  if (currentGroupId.value && (currentGroupId.value as any) !== UNASSIGNED) {
-    try {
-      const ids = Array.isArray(inserted) ? inserted.map((r:any) => r.id) : []
-      if (ids.length && bridge?.image?.moveToGroup) {
-        await bridge.image.moveToGroup(ids, currentGroupId.value)
+  if (files.length === 0) return
+  
+  isUploading.value = true
+  const fileCount = files.length
+  
+  try {    
+    const items: any[] = []
+    for (let i = 0; i < files.length; i++) {
+      const f = files[i]
+      uploadProgress.value = `处理文件 ${i + 1}/${fileCount}: ${f.name}`
+      
+      console.log('Processing file:', f.name)
+      const base64 = await fileToBase64(f)
+      const preview = await resizePreview(f, 320)
+      items.push({ 
+        filename: f.name, 
+        mimeType: f.type || 'image/png', 
+        sizeBytes: f.size, 
+        dataBase64: base64, 
+        previewBase64: preview 
+      })
+    }
+    
+    uploadProgress.value = '正在上传...'
+    console.log('Uploading items:', items)
+    const inserted = await bridge.image.upload(items)
+    console.log('Upload result:', inserted)
+    
+    // 移动到指定分组
+    if (currentGroupId.value && (currentGroupId.value as any) !== UNASSIGNED) {
+      try {
+        const ids = Array.isArray(inserted) ? inserted.map((r:any) => r.id) : []
+        if (ids.length && bridge?.image?.moveToGroup) {
+          await bridge.image.moveToGroup(ids, currentGroupId.value)
+        }
+      } catch (e) {
+        console.warn('Failed to move to group:', e)
       }
-    } catch {}
+    }
+    
+    // 刷新数据
+    await reloadImages(currentGroupId.value)
+    await reloadGroupCounts()
+    
+    toast.success(`成功上传 ${fileCount} 个文件`)
+    
+  } catch (error) {
+    console.error('Upload failed:', error)
+    toast.error(`上传失败: ${error}`)
+  } finally {
+    isUploading.value = false
+    uploadProgress.value = ''
   }
-  await reloadImages(currentGroupId.value)
-  await reloadGroupCounts()
 }
 
 async function generateSelected(selectedModelKey: string, selectedPromptId: string) {
   if (selected.value.size === 0) return
   if (!selectedModelKey || !selectedPromptId) return
+  
+  const count = selected.value.size
   isGenerating.value = true
+  
   try {
+    toast.info(`正在为 ${count} 张图片创建生成任务...`)
+    
     const ids = Array.from(selected.value)
     await bridge.job.bulkCreate({ 
       imageIds: ids, 
@@ -201,8 +243,14 @@ async function generateSelected(selectedModelKey: string, selectedPromptId: stri
       promptId: selectedPromptId,
       aspectRatio: aspect.value 
     })
+    
+    toast.success(`成功创建 ${count} 个生成任务，已加入排列中`)
     confirmOpen.value = false
     selected.value.clear()
+    
+  } catch (error) {
+    console.error('Generation failed:', error)
+    toast.error(`创建生成任务失败: ${error}`)
   } finally {
     isGenerating.value = false
   }
@@ -403,6 +451,8 @@ function handlePreview(image: ImageItem) {
           :all-count="allCount"
           :group-counts="groupCounts"
           :UNASSIGNED="UNASSIGNED"
+          :is-uploading="isUploading"
+          :upload-progress="uploadProgress"
           @upload="handleUpload"
           @clear-selection="selected.clear()"
           @open-bulk-delete="bulkDeleteOpen = true"
