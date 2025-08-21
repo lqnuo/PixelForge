@@ -5,6 +5,7 @@ import { Pagination, PaginationContent, PaginationEllipsis, PaginationFirst, Pag
 import { Button } from '@/components/ui/button'
 import { Select, SelectTrigger, SelectContent, SelectItem, SelectValue } from '@/components/ui/select'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
+import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover'
 import { ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-vue-next'
 
 const bridge: any = (window as any)?.api
@@ -61,6 +62,10 @@ const sortedTableData = computed<TableRow[]>(() => {
   }
   return arr
 })
+
+// Hover-controlled popovers for image previews
+const hoverSource = ref<string | null>(null)
+const hoverResult = ref<string | null>(null)
 
 function toggleSort(field: 'time' | 'status') {
   if (sortBy.value === field) {
@@ -208,26 +213,49 @@ async function downloadFirstResult(jobId: string) {
             </TableCell>
             <TableCell>
               <div class="flex items-center gap-2">
-                <div class="relative inline-block group">
-                  <template v-if="imageMap.get(row.sourceImageId)?.previewBase64">
-                    <img :src="dataUrl(imageMap.get(row.sourceImageId)!.mimeType, imageMap.get(row.sourceImageId)!.previewBase64)" class="h-10 w-10 object-cover rounded" />
-                    <div class="absolute left-0 top-full mt-2 hidden group-hover:block z-50 p-2 bg-[hsl(var(--card))] border border-[hsl(var(--border))] rounded-lg shadow-xl">
-                      <img :src="dataUrl(imageMap.get(row.sourceImageId)!.mimeType, imageMap.get(row.sourceImageId)!.previewBase64)" class="max-w-80 max-h-80 object-contain rounded" />
+                <Popover :open="hoverSource === row.id">
+                  <PopoverTrigger as-child>
+                    <div
+                      class="inline-block"
+                      @mouseenter="hoverSource = row.id"
+                      @mouseleave="hoverSource = null"
+                    >
+                      <template v-if="imageMap.get(row.sourceImageId)?.previewBase64">
+                        <img :src="dataUrl(imageMap.get(row.sourceImageId)!.mimeType, imageMap.get(row.sourceImageId)!.previewBase64)" class="h-10 w-10 object-cover rounded cursor-zoom-in" />
+                      </template>
+                      <div v-else class="h-10 w-10 rounded bg-[hsl(var(--muted))]" />
                     </div>
-                  </template>
-                  <div v-else class="h-10 w-10 rounded bg-[hsl(var(--muted))]" />
-                </div>
+                  </PopoverTrigger>
+                  <PopoverContent :side="'right'" :align="'start'" class="p-2 w-auto" @mouseenter="hoverSource = row.id" @mouseleave="hoverSource = null">
+                    <img
+                      v-if="imageMap.get(row.sourceImageId)?.previewBase64"
+                      :src="dataUrl(imageMap.get(row.sourceImageId)!.mimeType, imageMap.get(row.sourceImageId)!.previewBase64)"
+                      class="max-w-[min(80vw,560px)] max-h-[min(80vh,560px)] object-contain rounded"
+                    />
+                  </PopoverContent>
+                </Popover>
                 <div class="line-clamp-1">{{ imageMap.get(row.sourceImageId)?.filename || row.sourceImageId }}</div>
               </div>
             </TableCell>
             <TableCell>
               <template v-if="row.firstResult">
-                <div class="relative inline-block group">
-                  <img :src="dataUrl(row.firstResult!.mimeType, row.firstResult!.previewBase64)" class="h-10 w-10 object-cover rounded" />
-                  <div class="absolute left-0 top/full mt-2 hidden group-hover:block z-50 p-2 bg-[hsl(var(--card))] border border-[hsl(var(--border))] rounded-lg shadow-xl">
-                    <img :src="dataUrl(row.firstResult!.mimeType, row.firstResult!.previewBase64)" class="max-w-80 max-h-80 object-contain rounded" />
-                  </div>
-                </div>
+                <Popover :open="hoverResult === row.id">
+                  <PopoverTrigger as-child>
+                    <div
+                      class="inline-block"
+                      @mouseenter="hoverResult = row.id"
+                      @mouseleave="hoverResult = null"
+                    >
+                      <img :src="dataUrl(row.firstResult!.mimeType, row.firstResult!.previewBase64)" class="h-10 w-10 object-cover rounded cursor-zoom-in" />
+                    </div>
+                  </PopoverTrigger>
+                  <PopoverContent :side="'right'" :align="'start'" class="p-2 w-auto" @mouseenter="hoverResult = row.id" @mouseleave="hoverResult = null">
+                    <img
+                      :src="dataUrl(row.firstResult!.mimeType, row.firstResult!.previewBase64)"
+                      class="max-w-[min(80vw,560px)] max-h-[min(80vh,560px)] object-contain rounded"
+                    />
+                  </PopoverContent>
+                </Popover>
               </template>
               <span v-else class="text-neutral-400">—</span>
             </TableCell>
