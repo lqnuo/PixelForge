@@ -18,8 +18,6 @@ const bridge: any = (window as any)?.api
 const images = ref<ImageItem[]>([])
 const styles = ref<StyleItem[]>([])
 const groups = ref<GroupItem[]>([])
-const models = ref<ModelItem[]>([])
-const prompts = ref<PromptItem[]>([])
 const groupCounts = ref<Record<string, number>>({})
 const allCount = ref<number>(0)
 const UNASSIGNED = '__UNASSIGNED__'
@@ -141,31 +139,6 @@ async function reloadImages(gid: string | null | typeof UNASSIGNED) {
   }
 }
 
-async function loadModelsAndPrompts() {
-  const settings = await bridge.config.getAll()
-  models.value = [
-    {
-      key: 'dashscope_model',
-      name: '通义千问 (扩图)',
-      provider: 'dashscope',
-      available: !!(settings.dashscope_api_key && settings.dashscope_api_key.trim())
-    },
-    {
-      key: 'openai_image_model', 
-      name: 'OpenAI DALL-E',
-      provider: 'openai',
-      available: !!(settings.openai_api_key && settings.openai_api_key.trim())
-    },
-    {
-      key: 'deepseek_image_model',
-      name: 'DeepSeek',
-      provider: 'deepseek', 
-      available: !!(settings.deepseek_api_key && settings.deepseek_api_key.trim())
-    }
-  ]
-  
-  prompts.value = await bridge.prompt.list()
-}
 
 async function reloadGroupCounts() {
   if (!bridge) return
@@ -316,7 +289,6 @@ onMounted(async () => {
   await reloadGroups()
   await reloadImages(currentGroupId.value)
   styles.value = await bridge.style.list()
-  await loadModelsAndPrompts()
 })
 
 watch(currentGroupId, async (gid) => {
@@ -324,19 +296,6 @@ watch(currentGroupId, async (gid) => {
   selected.value.clear()
 })
 
-watch(confirmOpen, (open) => {
-  if (open) {
-    if (!selectedModelKey.value) {
-      const availableModel = models.value.find(m => m.available)
-      if (availableModel) {
-        selectedModelKey.value = availableModel.key
-      }
-    }
-    if (!selectedPromptId.value && prompts.value.length > 0) {
-      selectedPromptId.value = prompts.value[0].id
-    }
-  }
-})
 
 // === 组件事件处理器 ===
 function handleDrop(e: DragEvent) {
@@ -500,12 +459,8 @@ function handlePreview(image: ImageItem) {
 
     <GenerationConfirmDialog
       v-model:open="confirmOpen"
-      v-model:selected-model-key="selectedModelKey"
-      v-model:selected-prompt-id="selectedPromptId"
       v-model:aspect="aspect"
       :is-generating="isGenerating"
-      :models="models"
-      :prompts="prompts"
       :selected-count="selected.size"
       @generate="generateSelected"
     />

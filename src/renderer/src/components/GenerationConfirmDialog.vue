@@ -1,42 +1,42 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, ref, onMounted } from 'vue'
 import { Sparkles } from 'lucide-vue-next'
 import { DialogRoot, DialogPortal, DialogOverlay, DialogContent, DialogTitle, DialogDescription, DialogClose } from 'reka-ui'
 import { Button } from '@/components/ui/button'
 import type { ModelItem, PromptItem } from '@/types'
-
+const bridge: any = (window as any)?.api
 interface Props {
   open: boolean
   isGenerating: boolean
-  models: ModelItem[]
-  prompts: PromptItem[]
-  selectedModelKey: string | null
-  selectedPromptId: string | null
   aspect: '1:1' | '3:4'
   selectedCount: number
 }
 
 interface Emits {
   (e: 'update:open', value: boolean): void
-  (e: 'update:selectedModelKey', value: string | null): void
-  (e: 'update:selectedPromptId', value: string | null): void
   (e: 'update:aspect', value: '1:1' | '3:4'): void
   (e: 'generate'): void
 }
 
+
 const props = defineProps<Props>()
 const emit = defineEmits<Emits>()
+const selectedModelKey = ref<string | null>(null)
+const selectedPromptId = ref<string | null>(null)
+const prompts = ref<PromptItem[]>([])
+const models = ref<ModelItem[]>([])
 
-const canGenerate = computed(() => 
-  props.selectedModelKey && props.selectedPromptId && !props.isGenerating
-)
+
+const canGenerate = computed(() => {
+  return selectedModelKey.value && selectedPromptId.value && !props.isGenerating
+})
 
 function selectModel(key: string) {
-  emit('update:selectedModelKey', key)
+  selectedModelKey.value = key
 }
 
 function selectPrompt(id: string) {
-  emit('update:selectedPromptId', id)
+  selectedPromptId.value = id
 }
 
 function selectAspect(aspect: '1:1' | '3:4') {
@@ -50,6 +50,32 @@ function handleGenerate() {
 function onOpenChange(open: boolean) {
   emit('update:open', open)
 }
+
+onMounted(async () => {
+  const settings = await bridge.config.getAll()
+  models.value = [
+    {
+      key: 'dashscope_model',
+      name: '通义千问 (扩图)',
+      provider: 'dashscope',
+      available: !!(settings.dashscope_api_key && settings.dashscope_api_key.trim())
+    },
+    {
+      key: 'openai_image_model', 
+      name: 'OpenAI DALL-E',
+      provider: 'openai',
+      available: !!(settings.openai_api_key && settings.openai_api_key.trim())
+    },
+    {
+      key: 'deepseek_image_model',
+      name: 'DeepSeek',
+      provider: 'deepseek', 
+      available: !!(settings.deepseek_api_key && settings.deepseek_api_key.trim())
+    }
+  ]
+  prompts.value = await bridge.prompt.list()
+})
+
 </script>
 
 <template>
@@ -77,7 +103,7 @@ function onOpenChange(open: boolean) {
               <Button
                 v-for="model in models"
                 :key="model.key"
-                :variant="selectedModelKey === model.key ? 'default' : 'outline'"
+                :variant="selectedModelKey === model.key ? 'outline' : 'default'"
                 :disabled="!model.available"
                 @click="selectModel(model.key)"
                 class="w-full justify-start p-4 h-auto"
@@ -109,7 +135,7 @@ function onOpenChange(open: boolean) {
               <Button
                 v-for="prompt in prompts"
                 :key="prompt.id"
-                :variant="selectedPromptId === prompt.id ? 'default' : 'outline'"
+                :variant="selectedPromptId === prompt.id ? 'outline' : 'default'"
                 @click="selectPrompt(prompt.id)"
                 class="w-full justify-start p-4 h-auto"
               >
@@ -122,13 +148,13 @@ function onOpenChange(open: boolean) {
           </div>
 
           <!-- 尺寸选择 -->
-          <div>
+          <!-- <div>
             <div class="text-sm font-medium mb-3">输出尺寸</div>
             <div class="segmented">
               <Button variant="ghost" :class="['segmented-item', { 'is-active': aspect === '1:1' }]" @click="selectAspect('1:1')">1:1 正方形</Button>
               <Button variant="ghost" :class="['segmented-item', { 'is-active': aspect === '3:4' }]" @click="selectAspect('3:4')">3:4 竖版</Button>
             </div>
-          </div>
+          </div> -->
         </div>
 
         <div class="flex items-center justify-end gap-3 pt-4 border-t mt-6">
