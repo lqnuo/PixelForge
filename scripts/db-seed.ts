@@ -20,8 +20,6 @@ async function main() {
   const migrationsFolder = path.join(cwd, 'drizzle')
   migrate(db, { migrationsFolder })
 
-  // Idempotent defaults — match app logic
-  seedStyles(sqlite)
   seedPrompts(sqlite)
 
   // Record app version (best-effort)
@@ -31,31 +29,6 @@ async function main() {
     .run(appVersion)
 
   console.log('DB seeded at', dbPath)
-}
-
-function seedStyles(sqlite) {
-  const defaults = [
-    { name: '简约家居', description: '柔和光影，浅色背景，家居场景' },
-    { name: '户外自然光', description: '自然光照，草地/天空感觉' },
-    { name: '大理石台面', description: '冷白大理石台面，上方俯拍' },
-    { name: '木质背景', description: '温暖原木背景，浅景深' },
-  ]
-
-  const findByName = sqlite.prepare('SELECT id FROM styles WHERE name = ? LIMIT 1')
-  const insert = sqlite.prepare('INSERT INTO styles (id, name, description, preset) VALUES (?, ?, ?, NULL)')
-
-  // Ensure table exists before seeding (no-op if not migrated)
-  try {
-    for (const s of defaults) {
-      const existing = findByName.get(s.name)
-      if (!existing) {
-        insert.run(cryptoRandomUUID(), s.name, s.description || null)
-      }
-    }
-  } catch (e) {
-    // If table missing, migrations likely didn’t run; let main throw if migrate failed
-    throw e
-  }
 }
 
 function seedPrompts(sqlite) {
@@ -100,17 +73,6 @@ function seedPrompts(sqlite) {
     }
   }
 }
-
-function cryptoRandomUUID() {
-  if (typeof globalThis.crypto?.randomUUID === 'function') return globalThis.crypto.randomUUID()
-  // Fallback simple UUIDv4 (not RFC-4122 strict, but fine for local seeds)
-  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => {
-    const r = (Math.random() * 16) | 0
-    const v = c === 'x' ? r : (r & 0x3) | 0x8
-    return v.toString(16)
-  })
-}
-
 main().catch(err => {
   console.error('Seed failed:', err)
   process.exit(1)
