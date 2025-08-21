@@ -27,7 +27,8 @@ export const styles = sqliteTable('styles', {
 export const jobs = sqliteTable('jobs', {
   id: text('id').primaryKey(),
   sourceImageId: text('source_image_id').notNull(),
-  styleId: text('style_id'),
+  modelKey: text('model_key').notNull(),
+  promptId: text('prompt_id').notNull(),
   aspectRatio: text('aspect_ratio').notNull(),
   status: text('status').notNull().default('queued'),
   error: text('error'),
@@ -50,6 +51,15 @@ export const results = sqliteTable('results', {
 export const groups = sqliteTable('groups', {
   id: text('id').primaryKey(),
   name: text('name').notNull(),
+  createdAt: integer('created_at').notNull().default(sql`(strftime('%s','now'))`),
+})
+
+export const prompts = sqliteTable('prompts', {
+  id: text('id').primaryKey(),
+  name: text('name').notNull(),
+  description: text('description'),
+  prompt: text('prompt').notNull(),
+  category: text('category').default('general'),
   createdAt: integer('created_at').notNull().default(sql`(strftime('%s','now'))`),
 })
 

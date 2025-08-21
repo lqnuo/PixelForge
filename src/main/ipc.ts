@@ -1,7 +1,7 @@
 import { ipcMain, dialog, IpcMainInvokeEvent, shell, app } from 'electron'
 import { randomUUID } from 'crypto'
 import { getDb } from './db'
-import { images, jobs, results, styles, groups } from './db/schema'
+import { images, jobs, results, styles, groups, prompts } from './db/schema'
 import { sha256 } from './utils/crypto'
 import { eq, desc } from 'drizzle-orm'
 import { writeFileSync } from 'fs'
@@ -154,7 +154,7 @@ export function registerIpcHandlers() {
       error: null as string | null,
     }
     await withRetry(() => db.insert(jobs).values(row).run())
-    enqueueJob(id)
+    await enqueueJob(id)
     return row
   })
 
@@ -162,26 +162,34 @@ export function registerIpcHandlers() {
     'job.bulkCreate',
     async (
       evt,
-      payload: { imageIds: string[]; styleId?: string | null; aspectRatio: string }
+      payload: { 
+        imageIds: string[]
+        modelKey: string
+        promptId: string
+        aspectRatio: string
+      }
     ) => {
       if (!isTrustedSender(evt))
         return { ok: false, code: 'E_FORBIDDEN', message: 'untrusted sender' }
       const imageIds = payload?.imageIds || []
       if (!Array.isArray(imageIds) || imageIds.length === 0)
         return { ok: false, code: 'E_VALIDATION', message: 'imageIds required' }
+      if (!payload?.modelKey || typeof payload.modelKey !== 'string') {
+        return { ok: false, code: 'E_VALIDATION', message: 'modelKey required' }
+      }
+      if (!payload?.promptId || typeof payload.promptId !== 'string') {
+        return { ok: false, code: 'E_VALIDATION', message: 'promptId required' }
+      }
       if (!payload?.aspectRatio || typeof payload.aspectRatio !== 'string') {
         return { ok: false, code: 'E_VALIDATION', message: 'aspectRatio required' }
       }
       if (!['1:1', '3:4'].includes(payload.aspectRatio)) {
         return { ok: false, code: 'E_VALIDATION', message: 'aspectRatio invalid' }
       }
-      if (payload.styleId) {
-        const existStyle = db
-          .select({ id: styles.id })
-          .from(styles)
-          .where(eq(styles.id, payload.styleId))
-          .get()
-        if (!existStyle) return { ok: false, code: 'E_NOT_FOUND', message: 'style not found' }
+      // 验证promptId存在
+      const existPrompt = db.select({ id: prompts.id }).from(prompts).where(eq(prompts.id, payload.promptId)).get()
+      if (!existPrompt) {
+        return { ok: false, code: 'E_NOT_FOUND', message: 'prompt not found' }
       }
       const created: string[] = []
       for (const imgId of imageIds) {
@@ -191,13 +199,14 @@ export function registerIpcHandlers() {
         const row = {
           id,
           sourceImageId: imgId,
-          styleId: payload.styleId ?? null,
+          modelKey: payload.modelKey,
+          promptId: payload.promptId,
           aspectRatio: payload.aspectRatio,
           status: 'queued',
           error: null as string | null,
         }
         await withRetry(() => db.insert(jobs).values(row).run())
-        enqueueJob(id)
+        await enqueueJob(id)
         created.push(id)
       }
       return { ok: true, count: created.length, ids: created }
@@ -211,6 +220,19 @@ export function registerIpcHandlers() {
     await withRetry(() => db.update(jobs).set({ status: 'queued', error: null }).where(eq(jobs.id, payload.jobId)).run())
     enqueueJob(payload.jobId)
     return { ok: true }
+  })
+
+  ipcMain.handle('job.delete', async (_evt, payload: { jobId: string }) => {
+    if (!payload?.jobId) return { ok: false, code: 'E_VALIDATION', message: 'jobId required' }
+    try {
+      // Delete results first, then job
+      db.delete(results).where(eq(results.jobId, payload.jobId)).run()
+      db.delete(jobs).where(eq(jobs.id, payload.jobId)).run()
+      return { ok: true }
+    } catch (e) {
+      logger.error('job.delete failed', e)
+      return { ok: false, code: 'E_IO', message: 'failed to delete job' }
+    }
   })
 
   ipcMain.handle('result.listByImage', async (evt, payload: { imageId: string }) => {
@@ -275,6 +297,12 @@ export function registerIpcHandlers() {
   ipcMain.handle('style.list', async (evt) => {
     if (!isTrustedSender(evt)) return { ok: false, code: 'E_FORBIDDEN', message: 'untrusted sender' }
     const rows = db.select().from(styles).all()
+    return rows
+  })
+
+  ipcMain.handle('prompt.list', async (evt) => {
+    if (!isTrustedSender(evt)) return { ok: false, code: 'E_FORBIDDEN', message: 'untrusted sender' }
+    const rows = db.select().from(prompts).all()
     return rows
   })
 

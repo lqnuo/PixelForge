@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button'
 import { Select, SelectTrigger, SelectContent, SelectItem, SelectValue } from '@/components/ui/select'
 import { Input } from '@/components/ui/input'
 import { Pagination, PaginationContent, PaginationEllipsis, PaginationFirst, PaginationLast, PaginationNext, PaginationPrevious, PaginationItem } from '@/components/ui/pagination'
-import type { ImageItem, StyleItem, GroupItem } from '@/types'
+import type { ImageItem, StyleItem, GroupItem, ModelItem, PromptItem } from '@/types'
 
 const bridge: any = (window as any)?.api
 
@@ -15,11 +15,14 @@ const bridge: any = (window as any)?.api
 const images = ref<ImageItem[]>([])
 const styles = ref<StyleItem[]>([])
 const groups = ref<GroupItem[]>([])
+const models = ref<ModelItem[]>([])
+const prompts = ref<PromptItem[]>([])
 const groupCounts = ref<Record<string, number>>({})
 const allCount = ref<number>(0)
 const UNASSIGNED = '__UNASSIGNED__'
 const selected = ref<Set<string>>(new Set())
-const selectedStyleId = ref<string | null>(null)
+const selectedModelKey = ref<string | null>(null)
+const selectedPromptId = ref<string | null>(null)
 const currentGroupId = ref<string | null>(null)
 const moveTargetGroupId = ref<string | null>(null)
 const moveTargetGroupIdStr = computed({
@@ -148,7 +151,36 @@ onMounted(async () => {
   await reloadGroups()
   await reloadImages(currentGroupId.value)
   styles.value = await bridge.style.list()
+  await loadModelsAndPrompts()
 })
+
+async function loadModelsAndPrompts() {
+  // 加载可用模型
+  const settings = await bridge.config.getAll()
+  models.value = [
+    {
+      key: 'dashscope_model',
+      name: '通义千问 (扩图)',
+      provider: 'dashscope',
+      available: !!(settings.dashscope_api_key && settings.dashscope_api_key.trim())
+    },
+    {
+      key: 'openai_image_model', 
+      name: 'OpenAI DALL-E',
+      provider: 'openai',
+      available: !!(settings.openai_api_key && settings.openai_api_key.trim())
+    },
+    {
+      key: 'deepseek_image_model',
+      name: 'DeepSeek',
+      provider: 'deepseek', 
+      available: !!(settings.deepseek_api_key && settings.deepseek_api_key.trim())
+    }
+  ]
+  
+  // 从数据库加载提示语
+  prompts.value = await bridge.prompt.list()
+}
 
 watch(currentGroupId, async (gid) => {
   await reloadImages((gid as any) ?? null)
@@ -156,8 +188,18 @@ watch(currentGroupId, async (gid) => {
 })
 
 watch(confirmOpen, (open) => {
-  if (open && !selectedStyleId.value && styles.value.length > 0) {
-    selectedStyleId.value = styles.value[0].id
+  if (open) {
+    // 设置默认模型（选择第一个可用的）
+    if (!selectedModelKey.value) {
+      const availableModel = models.value.find(m => m.available)
+      if (availableModel) {
+        selectedModelKey.value = availableModel.key
+      }
+    }
+    // 设置默认提示语
+    if (!selectedPromptId.value && prompts.value.length > 0) {
+      selectedPromptId.value = prompts.value[0].id
+    }
   }
 })
 
@@ -215,12 +257,21 @@ async function uploadFiles(files: File[]) {
 
 async function generateSelected() {
   if (selected.value.size === 0) return
-  if (!selectedStyleId.value) return
+  if (!selectedModelKey.value || !selectedPromptId.value) return
   isGenerating.value = true
-  const ids = Array.from(selected.value)
-  await bridge.job.bulkCreate({ imageIds: ids, styleId: selectedStyleId.value, aspectRatio: aspect.value })
-  isGenerating.value = false
-  confirmOpen.value = false
+  try {
+    const ids = Array.from(selected.value)
+    await bridge.job.bulkCreate({ 
+      imageIds: ids, 
+      modelKey: selectedModelKey.value,
+      promptId: selectedPromptId.value,
+      aspectRatio: aspect.value 
+    })
+    confirmOpen.value = false
+    selected.value.clear()
+  } finally {
+    isGenerating.value = false
+  }
 }
 
 async function submitBulkDelete() {
@@ -885,41 +936,89 @@ async function moveSingleToGroup(groupId: string | null) {
     <DialogRoot v-model:open="confirmOpen">
       <DialogPortal>
         <DialogOverlay class="fixed inset-0 bg-black/50 backdrop-blur-sm" />
-        <DialogContent class="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[520px] max-w-[90vw] card-base p-4">
-          <DialogTitle class="text-lg font-semibold mb-1">选择风格与尺寸</DialogTitle>
-          <DialogDescription class="text-sm text-[hsl(var(--muted-foreground))] mb-4">
-            请确认本次生成使用的艺术风格与比例。
+        <DialogContent class="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[560px] max-w-[90vw] card-base p-6">
+          <DialogTitle class="text-lg font-semibold mb-1">选择模型与提示语</DialogTitle>
+          <DialogDescription class="text-sm text-[hsl(var(--muted-foreground))] mb-6">
+            请选择要使用的AI模型和处理提示语，两项都必须选择才能开始生成。
           </DialogDescription>
 
-          <!-- 风格选择 -->
-          <div class="mb-4">
-            <div class="text-sm mb-2">风格预设</div>
-            <div class="grid grid-cols-3 gap-2 max-h-60 overflow-auto pr-1">
+          <!-- 模型选择 -->
+          <div class="mb-6">
+            <div class="flex items-center gap-2 mb-3">
+              <div class="text-sm font-medium">AI 模型</div>
+              <div class="text-xs text-[hsl(var(--muted-foreground))] bg-[hsl(var(--muted))] px-2 py-1 rounded">
+                需要配置API密钥才可选择
+              </div>
+            </div>
+            <div class="space-y-2">
               <Button
-                v-for="s in styles"
-                :key="s.id"
-                :variant="selectedStyleId === s.id ? 'default' : 'outline'"
-                @click="selectedStyleId = s.id"
-              >{{ s.name }}</Button>
+                v-for="model in models"
+                :key="model.key"
+                :variant="selectedModelKey === model.key ? 'default' : 'outline'"
+                :disabled="!model.available"
+                @click="selectedModelKey = model.key"
+                class="w-full justify-start p-4 h-auto"
+              >
+                <div class="flex items-center justify-between w-full">
+                  <div class="text-left">
+                    <div class="font-medium">{{ model.name }}</div>
+                    <div class="text-xs opacity-70 capitalize">{{ model.provider }}</div>
+                  </div>
+                  <div v-if="!model.available" class="text-xs text-[hsl(var(--muted-foreground))] bg-[hsl(var(--muted))] px-2 py-1 rounded">
+                    未配置
+                  </div>
+                  <div v-else class="text-xs text-green-600 bg-green-100 px-2 py-1 rounded dark:text-green-400 dark:bg-green-900">
+                    已配置
+                  </div>
+                </div>
+              </Button>
+              <div v-if="models.filter(m => m.available).length === 0" class="text-center py-4 text-[hsl(var(--muted-foreground))]">
+                <div class="text-sm">暂无可用模型</div>
+                <div class="text-xs mt-1">请先在设置中配置API密钥</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- 提示语选择 -->
+          <div class="mb-6">
+            <div class="text-sm font-medium mb-3">处理提示语</div>
+            <div class="space-y-2">
+              <Button
+                v-for="prompt in prompts"
+                :key="prompt.id"
+                :variant="selectedPromptId === prompt.id ? 'default' : 'outline'"
+                @click="selectedPromptId = prompt.id"
+                class="w-full justify-start p-4 h-auto"
+              >
+                <div class="text-left w-full">
+                  <div class="font-medium">{{ prompt.name }}</div>
+                  <div v-if="prompt.description" class="text-xs opacity-70 mt-1">{{ prompt.description }}</div>
+                </div>
+              </Button>
             </div>
           </div>
 
           <!-- 尺寸选择 -->
-          <div class="mb-4">
-            <div class="text-sm mb-2">尺寸比例</div>
+          <div class="mb-6">
+            <div class="text-sm font-medium mb-3">输出尺寸</div>
             <div class="segmented">
               <Button variant="ghost" :class="['segmented-item', { 'is-active': aspect === '1:1' }]" @click="aspect = '1:1'">1:1 正方形</Button>
               <Button variant="ghost" :class="['segmented-item', { 'is-active': aspect === '3:4' }]" @click="aspect = '3:4'">3:4 竖版</Button>
             </div>
           </div>
 
-          <div class="flex items-center justify-end gap-2 pt-2 border-t">
+          <div class="flex items-center justify-end gap-3 pt-4 border-t">
             <DialogClose as-child>
               <Button variant="outline">取消</Button>
             </DialogClose>
-            <Button :disabled="!selectedStyleId || isGenerating" @click="generateSelected">
+            <Button 
+              :disabled="!selectedModelKey || !selectedPromptId || isGenerating" 
+              @click="generateSelected"
+              class="min-w-[120px]"
+            >
               <span v-if="isGenerating" class="spinner mr-2"></span>
-              确认生成
+              <Sparkles v-else class="w-4 h-4 mr-2" />
+              {{ isGenerating ? '生成中...' : '开始生成' }}
             </Button>
           </div>
         </DialogContent>
@@ -1038,7 +1137,7 @@ async function moveSingleToGroup(groupId: string | null) {
     <div
       v-if="ctxVisible && ctxImage"
       class="fixed z-[9999] card-base p-2 min-w-[200px]"
-      :style="{ left: Math.min(ctxX, window.innerWidth - 220) + 'px', top: Math.min(ctxY, window.innerHeight - 200) + 'px' }"
+      :style="{ left: Math.min(ctxX, 1200 - 220) + 'px', top: Math.min(ctxY, 800 - 200) + 'px' }"
     >
       <div class="text-xs text-[hsl(var(--muted-foreground))] px-2 py-1">移动到分组</div>
       <Button variant="ghost" class="w-full justify-start px-2 py-1 hover:bg-[hsl(var(--muted))] rounded" @click="moveSingleToGroup(null)">未分组</Button>

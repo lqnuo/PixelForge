@@ -5,6 +5,7 @@
   "main": "./out/main/index.js",
   "author": "cheng",
   "homepage": "https://electron-vite.org",
+  "type": "module",
   "scripts": {
     "format": "prettier --write .",
     "lint": "eslint --cache .",
@@ -22,7 +23,8 @@
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
     "db:studio": "drizzle-kit studio",
-    "db:push": "drizzle-kit push"
+    "db:push": "drizzle-kit push",
+    "db:seed": "npx tsx scripts/db-seed.ts"
   },
   "dependencies": {
     "@electron-toolkit/preload": "^3.0.2",
@@ -37,6 +39,7 @@
     "drizzle-orm": "^0.44.4",
     "electron-updater": "^6.3.9",
     "lucide-vue-next": "latest",
+    "p-queue": "^8.1.0",
     "reka-ui": "^2.4.1",
     "tailwind-merge": "^3.3.1",
     "tailwindcss": "^4.1.12",

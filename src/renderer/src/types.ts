@@ -14,3 +14,17 @@ export type ImageItem = {
 export type StyleItem = { id: string; name: string; description?: string | null }
 
 export type GroupItem = { id: string; name: string; createdAt?: number }
+
+export type ModelItem = { 
+  key: string
+  name: string 
+  provider: 'dashscope' | 'openai' | 'deepseek'
+  available: boolean
+}
+
+export type PromptItem = {
+  id: string
+  name: string
+  description?: string | null
+  prompt: string
+}

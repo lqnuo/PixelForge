@@ -5,7 +5,7 @@ export default {
   out: './drizzle',
   dialect: 'sqlite',
   dbCredentials: {
-    // During dev, drizzle-kit works on a path; at runtime we use Electron userData
+    // Use the same path as runtime development environment
     url: './.local-dev/app.db'
   },
   verbose: true,

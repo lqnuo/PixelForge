@@ -1,3 +1,8 @@
+CREATE TABLE `settings` (
+	`key` text PRIMARY KEY NOT NULL,
+	`value` text
+);
+--> statement-breakpoint
 CREATE TABLE `groups` (
 	`id` text PRIMARY KEY NOT NULL,
 	`name` text NOT NULL,
@@ -22,12 +27,22 @@ CREATE UNIQUE INDEX `images_sha256_unique` ON `images` (`sha256`);--> statement-
 CREATE TABLE `jobs` (
 	`id` text PRIMARY KEY NOT NULL,
 	`source_image_id` text NOT NULL,
-	`style_id` text,
+	`model_key` text NOT NULL,
+	`prompt_id` text NOT NULL,
 	`aspect_ratio` text NOT NULL,
 	`status` text DEFAULT 'queued' NOT NULL,
 	`error` text,
 	`created_at` integer DEFAULT (strftime('%s','now')) NOT NULL,
 	`updated_at` integer DEFAULT (strftime('%s','now')) NOT NULL
+);
+--> statement-breakpoint
+CREATE TABLE `prompts` (
+	`id` text PRIMARY KEY NOT NULL,
+	`name` text NOT NULL,
+	`description` text,
+	`prompt` text NOT NULL,
+	`category` text DEFAULT 'general',
+	`created_at` integer DEFAULT (strftime('%s','now')) NOT NULL
 );
 --> statement-breakpoint
 CREATE TABLE `results` (

@@ -1,14 +1,16 @@
 <script setup lang="ts">
-import { onMounted, ref, computed, watch, h } from 'vue'
+import { onMounted, ref, computed, watch, onUnmounted } from 'vue'
 import type { ImageItem } from '@/types'
 import { Pagination, PaginationContent, PaginationEllipsis, PaginationFirst, PaginationLast, PaginationNext, PaginationPrevious, PaginationItem } from '@/components/ui/pagination'
 import { Button } from '@/components/ui/button'
 import { Select, SelectTrigger, SelectContent, SelectItem, SelectValue } from '@/components/ui/select'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover'
-import { ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-vue-next'
+import { ArrowUpDown, ArrowUp, ArrowDown, RefreshCw, Trash2 } from 'lucide-vue-next'
 
 const bridge: any = (window as any)?.api
+
+let updateInterval: NodeJS.Timeout | null = null
 
 type JobItem = {
   id: string
@@ -35,6 +37,8 @@ const statusFilterStr = computed({
   set: (v: string) => { statusFilter.value = v === 'all' ? null : v }
 })
 const images = ref<ImageItem[]>([])
+const loading = ref(false)
+const refreshing = ref(false)
 
 const imageMap = computed(() => new Map(images.value.map((i) => [i.id, i])))
 const pageCount = computed(() => Math.max(1, Math.ceil(total.value / pageSize.value)))
@@ -76,34 +80,67 @@ function toggleSort(field: 'time' | 'status') {
   }
 }
 
-async function fetchJobs() {
-  const res = await bridge.job.list({ page: page.value, pageSize: pageSize.value, status: statusFilter.value || null })
-  jobs.value = res.items
-  total.value = res.total
-  await loadPreviewsForJobs()
+async function fetchJobs(silent = false) {
+  if (!silent) loading.value = true
+  try {
+    const res = await bridge.job.list({ page: page.value, pageSize: pageSize.value, status: statusFilter.value || null })
+    jobs.value = res.items
+    total.value = res.total
+    await loadPreviewsForJobs()
+  } catch (error) {
+    console.error('Failed to fetch jobs:', error)
+  } finally {
+    if (!silent) loading.value = false
+  }
 }
 
 async function loadPreviewsForJobs() {
   const entries: [string, ResultPreview][] = []
-  await Promise.all(
-    jobs.value.map(async (j) => {
-      try {
-        const list: any[] = await bridge.result.listByJob(j.id)
-        const first = list?.[0]
-        if (first?.previewBase64) {
-          entries.push([j.id, { mimeType: first.mimeType, previewBase64: first.previewBase64 }])
-        }
-      } catch {}
-    })
-  )
-  const m = new Map<string, ResultPreview>()
+  const promises = jobs.value.map(async (j) => {
+    if (resultPreviewMap.value.has(j.id)) return
+    try {
+      const list: any[] = await bridge.result.listByJob(j.id)
+      const first = list?.[0]
+      if (first?.previewBase64) {
+        entries.push([j.id, { mimeType: first.mimeType, previewBase64: first.previewBase64 }])
+      }
+    } catch {}
+  })
+  
+  await Promise.all(promises)
+  const m = new Map(resultPreviewMap.value)
   for (const [k, v] of entries) m.set(k, v)
   resultPreviewMap.value = m
 }
 
+function startAutoRefresh() {
+  updateInterval = setInterval(async () => {
+    if (statusFilter.value === 'processing' || statusFilter.value === 'queued' || statusFilter.value === null) {
+      await fetchJobs(true)
+    }
+  }, 3000)
+}
+
+function stopAutoRefresh() {
+  if (updateInterval) {
+    clearInterval(updateInterval)
+    updateInterval = null
+  }
+}
+
 onMounted(async () => {
-  images.value = await bridge.image.list()
-  await fetchJobs()
+  loading.value = true
+  try {
+    images.value = await bridge.image.list()
+    await fetchJobs()
+    startAutoRefresh()
+  } finally {
+    loading.value = false
+  }
+})
+
+onUnmounted(() => {
+  stopAutoRefresh()
 })
 
 watch(page, async () => {
@@ -130,10 +167,40 @@ function toggle(id: string, checked: boolean) {
 }
 
 async function retrySelected() {
-  for (const id of Array.from(selected.value)) {
-    await bridge.job.retry(id)
+  if (selected.value.size === 0) return
+  loading.value = true
+  try {
+    const promises = Array.from(selected.value).map(id => bridge.job.retry(id))
+    await Promise.all(promises)
+    selected.value.clear()
+    await fetchJobs()
+  } finally {
+    loading.value = false
   }
-  await fetchJobs()
+}
+
+async function deleteSelected() {
+  if (selected.value.size === 0) return
+  if (!confirm(`确定要删除选中的 ${selected.value.size} 个任务吗？`)) return
+  
+  loading.value = true
+  try {
+    const promises = Array.from(selected.value).map(id => bridge.job.delete(id))
+    await Promise.all(promises)
+    selected.value.clear()
+    await fetchJobs()
+  } finally {
+    loading.value = false
+  }
+}
+
+async function refreshJobs() {
+  refreshing.value = true
+  try {
+    await fetchJobs()
+  } finally {
+    refreshing.value = false
+  }
 }
 
 function dataUrl(mime: string, base64?: string | null) {
@@ -142,13 +209,38 @@ function dataUrl(mime: string, base64?: string | null) {
 }
 
 async function downloadFirstResult(jobId: string) {
-  const results = await bridge.result.listByJob(jobId)
-  if (results?.[0]) {
-    const img = imageMap.value.get(results[0].sourceImageId)
-    await bridge.file.download(results[0].id, img?.filename || results[0].id)
-  } else {
-    alert('该任务暂无结果')
+  try {
+    const results = await bridge.result.listByJob(jobId)
+    if (results?.[0]) {
+      const img = imageMap.value.get(results[0].sourceImageId)
+      await bridge.file.download(results[0].id, img?.filename || results[0].id)
+    } else {
+      alert('该任务暂无结果')
+    }
+  } catch (error) {
+    console.error('Download failed:', error)
+    alert('下载失败，请重试')
   }
+}
+
+function getStatusText(status: string) {
+  const statusMap: Record<string, string> = {
+    'queued': '排队中',
+    'processing': '处理中', 
+    'done': '已完成',
+    'failed': '失败'
+  }
+  return statusMap[status] || status
+}
+
+function getStatusClass(status: string) {
+  const classMap: Record<string, string> = {
+    'done': 'badge-success',
+    'failed': 'badge-danger', 
+    'processing': 'badge-info',
+    'queued': 'badge-warn'
+  }
+  return classMap[status] || 'badge'
 }
 
 // === TanStack Table ===
@@ -157,12 +249,25 @@ async function downloadFirstResult(jobId: string) {
 
 <template>
   <div class="h-full flex flex-col">
-    <div class="toolbar flex items-center justify-between px-3 py-2">
+    <div class="toolbar flex items-center justify-between px-3 py-2 border-b border-[hsl(var(--border))]">
       <div class="flex items-center gap-2">
-        <Button variant="outline" :disabled="selected.size===0" @click="retrySelected">重试所选</Button>
+        <Button variant="outline" :disabled="selected.size===0 || loading" @click="retrySelected">
+          重试所选 ({{ selected.size }})
+        </Button>
+        <Button variant="outline" :disabled="selected.size===0 || loading" @click="deleteSelected">
+          <Trash2 class="h-4 w-4 mr-1" />
+          删除所选
+        </Button>
+        <Button variant="outline" :disabled="refreshing" @click="refreshJobs">
+          <RefreshCw class="h-4 w-4 mr-1" :class="{ 'animate-spin': refreshing }" />
+          刷新
+        </Button>
       </div>
       <div class="flex items-center gap-3">
-        <span class="text-xs px-2 py-1 rounded bg-[hsl(var(--muted))] text-[hsl(var(--muted-foreground))]">共 {{ total }} 个任务</span>
+        <span class="text-xs px-2 py-1 rounded bg-[hsl(var(--muted))] text-[hsl(var(--muted-foreground))]">
+          共 {{ total }} 个任务
+          <template v-if="selected.size > 0">，已选 {{ selected.size }} 个</template>
+        </span>
         <Select v-model="statusFilterStr">
           <SelectTrigger class="min-w-28"><SelectValue placeholder="全部状态" /></SelectTrigger>
           <SelectContent>
@@ -176,7 +281,10 @@ async function downloadFirstResult(jobId: string) {
       </div>
     </div>
 
-    <div class="flex-1 overflow-auto">
+    <div class="flex-1 overflow-auto relative">
+      <div v-if="loading" class="absolute inset-0 bg-black/10 flex items-center justify-center z-10">
+        <RefreshCw class="h-6 w-6 animate-spin" />
+      </div>
       <Table class="w-full text-sm">
         <TableHeader>
           <TableRow>
@@ -262,16 +370,30 @@ async function downloadFirstResult(jobId: string) {
             <TableCell>{{ row.styleId || '—' }}</TableCell>
             <TableCell>{{ row.aspectRatio }}</TableCell>
             <TableCell>
-              <span v-if="row.status==='done'" class="badge-success">已完成</span>
-              <span v-else-if="row.status==='failed'" class="badge-danger">失败</span>
-              <span v-else-if="row.status==='processing'" class="badge">处理中</span>
-              <span v-else class="badge-warn">排队中</span>
+              <span :class="getStatusClass(row.status)">{{ getStatusText(row.status) }}</span>
+              <div v-if="row.error" class="text-xs text-red-500 mt-1 truncate max-w-32" :title="row.error">
+                {{ row.error }}
+              </div>
             </TableCell>
             <TableCell>{{ new Date(row.createdAt * 1000).toLocaleString() }}</TableCell>
             <TableCell>
               <div class="flex gap-1">
-                <Button variant="outline" class="!px-2 !py-1" @click="bridge.job.retry(row.id)">重试</Button>
-                <Button variant="outline" class="!px-2 !py-1" @click="downloadFirstResult(row.id)">下载</Button>
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  :disabled="loading" 
+                  @click="bridge.job.retry(row.id).then(() => fetchJobs())"
+                >
+                  重试
+                </Button>
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  :disabled="!row.firstResult || loading" 
+                  @click="downloadFirstResult(row.id)"
+                >
+                  下载
+                </Button>
               </div>
             </TableCell>
           </TableRow>
@@ -299,4 +421,11 @@ async function downloadFirstResult(jobId: string) {
   </div>
 </template>
 
-<style scoped></style>
+<style scoped>
+.line-clamp-1 {
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 1;
+}
+</style>
