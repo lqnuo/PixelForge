@@ -35,6 +35,7 @@ interface Emits {
   (e: 'clearSelection'): void
   (e: 'openBulkDelete'): void
   (e: 'moveSelectedToGroup'): void
+  (e: 'openGenerate'): void
 }
 
 const props = defineProps<Props>()
@@ -91,9 +92,15 @@ function getCurrentGroupInfo() {
         </label>
         
         <!-- AI 生成按钮 -->
-        <Button variant="outline" class="border-gradient">
-          <Sparkles class="h-5 w-5 mr-2 text-[hsl(var(--accent))]" />
-          <span class="font-semibold">AI 生成</span>
+        <Button 
+          variant="outline" 
+          @click="emit('openGenerate')" 
+          :disabled="selected.size === 0"
+          class="border-gradient"
+          title="选择素材后点击生成"
+        >
+          <Sparkles class="h-4 w-4 mr-2" />
+          <span class="font-semibold">AI 生成{{ selected.size > 0 ? ` (${selected.size})` : '' }}</span>
         </Button>
       </div>
 

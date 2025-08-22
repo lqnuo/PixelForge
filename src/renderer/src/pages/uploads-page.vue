@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { onMounted, ref, computed, watch } from 'vue'
-import { Upload, Sparkles } from 'lucide-vue-next'
+import { Upload } from 'lucide-vue-next'
 import { Button } from '@/components/ui/button'
 import { toast } from 'vue-sonner'
 import type { ImageItem, StyleItem, GroupItem } from '@/types'
@@ -457,22 +457,9 @@ function handlePreview(image: ImageItem) {
           @clear-selection="selected.clear()"
           @open-bulk-delete="bulkDeleteOpen = true"
           @move-selected-to-group="moveSelectedToGroup"
+          @open-generate="confirmOpen = true"
         />
 
-        <!-- 生成操作条（点击后弹出确认框） -->
-        <div v-if="selected.size > 0" class="glass-panel p-4 rounded-xl border border-[hsl(var(--primary))]/20 bg-[hsl(var(--primary))]/5 animate-slide-in-from-bottom">
-          <div class="flex items-center justify-between">
-            <div class="flex items-center gap-3">
-              <Sparkles class="h-5 w-5 text-[hsl(var(--primary))]" />
-              <span class="font-medium">已选择 {{ selected.size }} 项</span>
-            </div>
-            <Button :disabled="isGenerating" @click="confirmOpen = true" class="btn-primary">
-              <span v-if="isGenerating" class="spinner mr-2"></span>
-              <Sparkles v-else class="w-4 h-4 mr-1" />
-              生成
-            </Button>
-          </div>
-        </div>
 
         <!-- 素材网格容器 -->
         <div class="flex-1 min-h-0 flex flex-col">
