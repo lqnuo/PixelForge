@@ -1,112 +1,41 @@
-import { app } from 'electron'
 import Database from 'better-sqlite3'
 import { drizzle, BetterSQLite3Database } from 'drizzle-orm/better-sqlite3'
-import { existsSync, mkdirSync } from 'fs'
+import { migrate } from 'drizzle-orm/better-sqlite3/migrator'
+import { getDatabasePath } from './config'
+import * as schema from './schema'
 import { join } from 'path'
 
-let dbInstance: BetterSQLite3Database | null = null
+let dbInstance: BetterSQLite3Database<typeof schema> | null = null
 
-export function initDb(): BetterSQLite3Database {
+export function initDb(): BetterSQLite3Database<typeof schema> {
   if (dbInstance) return dbInstance
-  const userData = app.getPath('userData')
-  if (!existsSync(userData)) {
-    mkdirSync(userData, { recursive: true })
-  }
-  const dbFile = join(userData, 'app.db')
+  
+  const dbFile = getDatabasePath()
   const sqlite = new Database(dbFile)
-  // basic pragmas for stability
+  
+  // Basic pragmas for stability
   sqlite.pragma('journal_mode = WAL')
-  ensureSchema(sqlite)
-  dbInstance = drizzle(sqlite)
+  
+  const db = drizzle(sqlite, { schema })
+  dbInstance = db
+  
+  // Run DDL migrations. In dev, run from workspace; in prod, run from resources.
+  try {
+    const migrationsFolder =
+      process.env.NODE_ENV === 'development'
+        ? join(process.cwd(), 'drizzle')
+        : join(process.resourcesPath, 'drizzle')
+    migrate(db, { migrationsFolder })
+  } catch (error) {
+    console.warn('Migration skipped (may be first run):', error)
+  }
+  
   return dbInstance
 }
 
-export function getDb(): BetterSQLite3Database {
+export function getDb(): BetterSQLite3Database<typeof schema> {
   if (!dbInstance) {
     return initDb()
   }
   return dbInstance
-}
-
-function ensureSchema(sqlite: Database.Database) {
-  // Create tables and indexes if not exist (first-run or upgrades)
-  const ddl = `
-  CREATE TABLE IF NOT EXISTS images (
-    id TEXT PRIMARY KEY,
-    filename TEXT,
-    mime_type TEXT NOT NULL,
-    size_bytes INTEGER NOT NULL,
-    width INTEGER,
-    height INTEGER,
-    sha256 TEXT NOT NULL UNIQUE,
-    data_blob BLOB NOT NULL,
-    preview_base64 TEXT,
-    group_id TEXT,
-    created_at INTEGER NOT NULL DEFAULT (strftime('%s','now'))
-  );
-  CREATE UNIQUE INDEX IF NOT EXISTS idx_images_sha256 ON images(sha256);
-
-  CREATE TABLE IF NOT EXISTS styles (
-    id TEXT PRIMARY KEY,
-    name TEXT NOT NULL,
-    description TEXT,
-    preset TEXT,
-    created_at INTEGER NOT NULL DEFAULT (strftime('%s','now'))
-  );
-
-  CREATE TABLE IF NOT EXISTS jobs (
-    id TEXT PRIMARY KEY,
-    source_image_id TEXT NOT NULL,
-    style_id TEXT,
-    aspect_ratio TEXT NOT NULL,
-    status TEXT NOT NULL DEFAULT 'queued',
-    error TEXT,
-    created_at INTEGER NOT NULL DEFAULT (strftime('%s','now')),
-    updated_at INTEGER NOT NULL DEFAULT (strftime('%s','now'))
-  );
-  CREATE INDEX IF NOT EXISTS idx_jobs_source_image_id ON jobs(source_image_id);
-
-  CREATE TABLE IF NOT EXISTS results (
-    id TEXT PRIMARY KEY,
-    job_id TEXT NOT NULL,
-    source_image_id TEXT NOT NULL,
-    mime_type TEXT NOT NULL,
-    width INTEGER,
-    height INTEGER,
-    data_blob BLOB NOT NULL,
-    preview_base64 TEXT,
-    created_at INTEGER NOT NULL DEFAULT (strftime('%s','now'))
-  );
-  CREATE INDEX IF NOT EXISTS idx_results_source_image_id ON results(source_image_id);
-  CREATE INDEX IF NOT EXISTS idx_results_job_id ON results(job_id);
-
-  CREATE TABLE IF NOT EXISTS groups (
-    id TEXT PRIMARY KEY,
-    name TEXT NOT NULL,
-    created_at INTEGER NOT NULL DEFAULT (strftime('%s','now'))
-  );
-  
-  -- Key-Value settings storage
-  CREATE TABLE IF NOT EXISTS settings (
-    key TEXT PRIMARY KEY,
-    value TEXT
-  );
-  `
-  sqlite.exec(ddl)
-
-  // Migration: add images.group_id if missing (for existing DBs)
-  try {
-    const col = sqlite
-      .prepare("SELECT 1 as ok FROM pragma_table_info('images') WHERE name = 'group_id'")
-      .get() as any
-    if (!col) {
-      sqlite.prepare('ALTER TABLE images ADD COLUMN group_id TEXT').run()
-    }
-    // ensure index exists only after column exists
-    try {
-      sqlite.prepare('CREATE INDEX IF NOT EXISTS idx_images_group_id ON images(group_id)').run()
-    } catch {}
-  } catch {
-    // ignore
-  }
 }

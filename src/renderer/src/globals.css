@@ -22,11 +22,11 @@
   --card-border: 220 14% 88%;
   
   /* === Interactive Elements (single-hue, no gradients) === */
-  /* Brand: Electric Violet — assertive yet refined */
-  --primary: 256 72% 56%;
+  /* Brand: Deep Slate — professional and reliable */
+  --primary: 215 28% 17%;
   --primary-foreground: 0 0% 100%;
-  --primary-hover: 256 72% 50%;
-  --primary-active: 256 72% 44%;
+  --primary-hover: 215 28% 15%;
+  --primary-active: 215 28% 12%;
   
   /* === Secondary Actions === */
   --secondary: 220 14% 93%;
@@ -34,9 +34,9 @@
   --secondary-hover: 220 14% 88%;
   
   /* === Accent & Highlight (unified with brand) === */
-  --accent: 256 72% 56%;
+  --accent: 215 28% 17%;
   --accent-foreground: 0 0% 100%;
-  --accent-hover: 256 72% 50%;
+  --accent-hover: 215 28% 15%;
   
   /* === Text Hierarchy === */
   --text-primary: 220 30% 8%;
@@ -58,7 +58,7 @@
   --border: 220 14% 88%;
   --border-subtle: 220 14% 93%;
   --input: 220 14% 88%;
-  --ring: 256 72% 56%;
+  --ring: 215 28% 17%;
   
   /* === Legacy Compatibility === */
   --muted: 220 14% 93%;
@@ -97,10 +97,10 @@
   --card-border: 220 18% 15%;
   
   /* === Interactive Elements (single-hue, no gradients) === */
-  --primary: 256 76% 64%;
-  --primary-foreground: 220 30% 3%;
-  --primary-hover: 256 76% 70%;
-  --primary-active: 256 76% 76%;
+  --primary: 215 25% 20%;
+  --primary-foreground: 0 0% 98%;
+  --primary-hover: 215 25% 23%;
+  --primary-active: 215 25% 26%;
   
   /* === Secondary Actions === */
   --secondary: 220 18% 12%;
@@ -108,9 +108,9 @@
   --secondary-hover: 220 18% 15%;
   
   /* === Accent & Highlight (unified with brand) === */
-  --accent: 256 76% 64%;
-  --accent-foreground: 220 30% 3%;
-  --accent-hover: 256 76% 70%;
+  --accent: 215 25% 20%;
+  --accent-foreground: 0 0% 98%;
+  --accent-hover: 215 25% 23%;
   
   /* === Text Hierarchy === */
   --text-primary: 220 20% 95%;
@@ -132,7 +132,7 @@
   --border: 220 18% 15%;
   --border-subtle: 220 18% 12%;
   --input: 220 18% 15%;
-  --ring: 256 76% 64%;
+  --ring: 215 25% 20%;
   
   /* === Legacy Compatibility === */
   --muted: 220 18% 12%;
@@ -629,6 +629,8 @@ body { background-color: hsl(var(--background)); color: hsl(var(--foreground)); 
   overflow: hidden; 
 }
 
-/* Explicitly flat variants for any legacy “*gradient” class names */
+/* Explicitly flat variants for any legacy "*gradient" class names */
 .text-gradient { color: hsl(var(--primary)); }
 .border-gradient { background: hsl(var(--surface-primary)); border: 1px solid hsl(var(--primary) / 0.3); }
+
+

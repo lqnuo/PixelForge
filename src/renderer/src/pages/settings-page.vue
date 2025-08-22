@@ -18,7 +18,7 @@ const savedHint = ref('')
 const form = reactive({
   qwen: {
     apiKey: '',
-    endpoint: 'https://dashscope.aliyuncs.com/api/v1/services/images/editing',
+    endpoint: 'https://dashscope.aliyuncs.com/api/v1/services/aigc/multimodal-generation/generation',
     model: 'qwen-image-edit'
   },
   openai: {
@@ -36,7 +36,8 @@ const form = reactive({
 // 预设可选模型（占位，不发请求）
 const modelOptions: Record<Provider, Array<{ label: string; value: string }>> = {
   qwen: [
-    { label: 'qwen-image-edit', value: 'qwen-image-edit' },
+    { label: 'qwen-image-edit (同步)', value: 'qwen-image-edit' },
+    { label: 'wanx2.1-imageedit (异步)', value: 'wanx2.1-imageedit' },
     { label: 'qwen-vl-plus', value: 'qwen-vl-plus' },
     { label: 'qwen-vl-max', value: 'qwen-vl-max' },
     { label: 'qwen-vl-turbo', value: 'qwen-vl-turbo' }
@@ -63,7 +64,7 @@ async function load() {
     // Qwen
     form.qwen.apiKey = all['dashscope_api_key'] || ''
     form.qwen.endpoint =
-      all['dashscope_endpoint'] || 'https://dashscope.aliyuncs.com/api/v1/services/images/editing'
+      all['dashscope_endpoint'] || 'https://dashscope.aliyuncs.com/api/v1/services/aigc/multimodal-generation/generation'
     form.qwen.model = all['dashscope_model'] || 'qwen-image-edit'
     // OpenAI
     form.openai.apiKey = all['openai_api_key'] || ''
@@ -149,7 +150,7 @@ onMounted(load)
               <label class="flex flex-col gap-1">
                 <span class="text-sm text-[hsl(var(--muted-foreground))]">Endpoint</span>
                 <Input v-model="form.qwen.endpoint" type="text" />
-                <span class="text-xs text-[hsl(var(--muted-foreground))]">默认：https://dashscope.aliyuncs.com/api/v1/services/images/editing</span>
+                <span class="text-xs text-gray-500 dark:text-gray-400">默认：https://dashscope.aliyuncs.com/api/v1/services/images/editing</span>
               </label>
               <label class="flex flex-col gap-1">
                 <span class="text-sm text-[hsl(var(--muted-foreground))]">Model</span>
@@ -171,7 +172,7 @@ onMounted(load)
               <label class="flex flex-col gap-1">
                 <span class="text-sm text-[hsl(var(--muted-foreground))]">Base URL</span>
                 <Input v-model="form.openai.baseUrl" type="text" />
-                <span class="text-xs text-[hsl(var(--muted-foreground))]">默认：https://api.openai.com/v1（如走代理可改为自定义网关）</span>
+                <span class="text-xs text-gray-500 dark:text-gray-400">默认：https://api.openai.com/v1（如走代理可改为自定义网关）</span>
               </label>
               <label class="flex flex-col gap-1">
                 <span class="text-sm text-[hsl(var(--muted-foreground))]">Image Model</span>
@@ -193,7 +194,7 @@ onMounted(load)
               <label class="flex flex-col gap-1">
                 <span class="text-sm text-[hsl(var(--muted-foreground))]">Base URL</span>
                 <Input v-model="form.deepseek.baseUrl" type="text" />
-                <span class="text-xs text-[hsl(var(--muted-foreground))]">默认：https://api.deepseek.com/v1</span>
+                <span class="text-xs text-gray-500 dark:text-gray-400">默认：https://api.deepseek.com/v1</span>
               </label>
               <label class="flex flex-col gap-1">
                 <span class="text-sm text-[hsl(var(--muted-foreground))]">Image Model</span>
@@ -214,7 +215,7 @@ onMounted(load)
             </div>
           </div>
 
-          <div class="text-xs text-[hsl(var(--muted-foreground))]">
+          <div class="text-xs text-gray-500 dark:text-gray-400">
             说明：这里只做多家模型的配置管理（不发起任何请求）。后续需要时可在任务执行里按所选供应商读取对应配置。
           </div>
         </section>

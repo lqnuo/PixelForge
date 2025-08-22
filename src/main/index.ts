@@ -1,12 +1,18 @@
 import { app, shell, BrowserWindow } from 'electron'
 import { join } from 'path'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
+// Use the icon placed in resources for bundling
 import icon from '../../resources/icon.png?asset'
 import { initDb } from './db'
 import { registerIpcHandlers } from './ipc'
-import { seedStyles } from './styles/seed'
+import { runDataMigrations } from './db/seed'
 import { startWorker } from './jobs/worker'
 import { logger } from './utils/log'
+
+// Set NODE_ENV for database configuration
+if (is.dev) {
+  process.env.NODE_ENV = 'development'
+}
 
 function createWindow(): void {
   // Create the browser window.
@@ -16,9 +22,10 @@ function createWindow(): void {
     minWidth: 500,
     show: false,
     autoHideMenuBar: true,
-    ...(process.platform === 'linux' ? { icon } : {}),
+    // Apply icon on Linux and Windows for window/taskbar
+    ...(process.platform !== 'darwin' ? { icon } : {}),
     webPreferences: {
-      preload: join(__dirname, '../preload/index.js'),
+      preload: join(__dirname, '../preload/index.mjs'),
       // Disable sandbox so the preload bridge can access Electron APIs safely
       sandbox: false,
       contextIsolation: true
@@ -49,10 +56,19 @@ function createWindow(): void {
 // This method will be called when Electron has finished
 // initialization and is ready to create browser windows.
 // Some APIs can only be used after this event occurs.
-app.whenReady().then(() => {
+app.whenReady().then(async () => {
   // Set app user model id for windows
   electronApp.setAppUserModelId('com.electron')
   logger.info('App starting...')
+
+  // On macOS, update the dock icon at runtime
+  if (process.platform === 'darwin') {
+    try {
+      app.dock.setIcon(icon as any)
+    } catch (e) {
+      logger.warn('Failed to set macOS dock icon')
+    }
+  }
 
   // Default open or close DevTools by F12 in development
   // and ignore CommandOrControl + R in production.
@@ -64,9 +80,9 @@ app.whenReady().then(() => {
   // Initialize DB and IPC handlers
   initDb()
   logger.info('Database initialized')
-  seedStyles()
+  runDataMigrations()
   registerIpcHandlers()
-  startWorker()
+  await startWorker()
   logger.info('IPC and worker started')
 
   createWindow()

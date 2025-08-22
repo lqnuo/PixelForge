@@ -24,12 +24,13 @@ const api = {
   job: {
     create: (params: { imageId: string; styleId?: string | null; aspectRatio: string }) =>
       ipcRenderer.invoke('job.create', params),
-    bulkCreate: (params: { imageIds: string[]; styleId?: string | null; aspectRatio: string }) =>
+    bulkCreate: (params: { imageIds: string[]; modelKey: string; promptId: string; aspectRatio: string }) =>
       ipcRenderer.invoke('job.bulkCreate', params),
     listByImage: (imageId: string) => ipcRenderer.invoke('job.listByImage', { imageId }),
     list: (params: { page?: number; pageSize?: number; status?: string | null } = {}) =>
       ipcRenderer.invoke('job.list', params),
-    retry: (jobId: string) => ipcRenderer.invoke('job.retry', { jobId })
+    retry: (jobId: string) => ipcRenderer.invoke('job.retry', { jobId }),
+    delete: (jobId: string) => ipcRenderer.invoke('job.delete', { jobId })
   },
   result: {
     listByImage: (imageId: string) => ipcRenderer.invoke('result.listByImage', { imageId }),
@@ -37,6 +38,9 @@ const api = {
   },
   style: {
     list: () => ipcRenderer.invoke('style.list')
+  },
+  prompt: {
+    list: () => ipcRenderer.invoke('prompt.list')
   },
   group: {
     list: () => ipcRenderer.invoke('group.list'),
