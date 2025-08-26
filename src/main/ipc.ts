@@ -396,4 +396,21 @@ export function registerIpcHandlers() {
       return { ok: false }
     }
   })
+
+  // === Auth integration (open web login) ===
+  ipcMain.handle('auth.openLogin', async (_evt, payload: { siteUrl?: string; redirectUri?: string }) => {
+    try {
+      const base = (payload?.siteUrl || process.env.OFFICIAL_SITE_URL || '').replace(/\/$/, '')
+      const redirect = payload?.redirectUri || 'pixelforge://auth/callback'
+      if (!base) {
+        return { ok: false, message: 'Missing siteUrl: set OFFICIAL_SITE_URL or pass siteUrl' }
+      }
+      const loginUrl = `${base}/login?redirect_uri=${encodeURIComponent(redirect)}`
+      await shell.openExternal(loginUrl)
+      return { ok: true, url: loginUrl }
+    } catch (e) {
+      logger.error('auth.openLogin failed', e)
+      return { ok: false, message: 'Failed to open login' }
+    }
+  })
 }

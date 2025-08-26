@@ -64,7 +64,7 @@ app.whenReady().then(async () => {
   // On macOS, update the dock icon at runtime
   if (process.platform === 'darwin') {
     try {
-      app.dock.setIcon(icon as any)
+      app.dock?.setIcon(icon as any)
     } catch (e) {
       logger.warn('Failed to set macOS dock icon')
     }
@@ -84,6 +84,42 @@ app.whenReady().then(async () => {
   registerIpcHandlers()
   await startWorker()
   logger.info('IPC and worker started')
+
+  // Register custom protocol for auth callback
+  try {
+    const protocol = 'pixelforge'
+    if (process.defaultApp) {
+      // In dev mode on Windows, Electron needs explicit exe path
+      app.setAsDefaultProtocolClient(protocol, process.execPath, [process.argv[1]])
+    } else {
+      app.setAsDefaultProtocolClient(protocol)
+    }
+  } catch (e) {
+    logger.warn('Failed to register protocol client')
+  }
+
+  // Ensure single instance to capture deep link on Windows
+  const gotLock = app.requestSingleInstanceLock()
+  if (!gotLock) {
+    app.quit()
+    return
+  }
+  app.on('second-instance', (_event, argv) => {
+    // Windows deep link will come in argv like pixelforge://auth/callback?token=...
+    const url = argv.find((a) => a.startsWith('pixelforge://'))
+    if (url) handleAuthCallback(url)
+    const win = BrowserWindow.getAllWindows()[0]
+    if (win) {
+      if (win.isMinimized()) win.restore()
+      win.focus()
+    }
+  })
+
+  // macOS deep link
+  app.on('open-url', (event, url) => {
+    event.preventDefault()
+    handleAuthCallback(url)
+  })
 
   createWindow()
 
@@ -106,3 +142,18 @@ app.on('window-all-closed', () => {
 
 // In this file you can include the rest of your app's specific main process
 // code. You can also put them in separate files and require them here.
+
+function handleAuthCallback(url: string) {
+  try {
+    const u = new URL(url)
+    const token = u.searchParams.get('token')
+    const payload = { url, token }
+    const win = BrowserWindow.getAllWindows()[0]
+    if (win) {
+      win.webContents.send('auth.callback', payload)
+    }
+    logger.info('Auth callback received')
+  } catch (e) {
+    logger.error('Failed to handle auth callback', e)
+  }
+}

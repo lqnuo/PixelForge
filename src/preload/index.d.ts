@@ -45,9 +45,13 @@ declare global {
         get: (key: string) => Promise<string | null>
         set: (key: string, value: string) => Promise<{ ok: boolean }>
       }
+      auth: {
+        openLogin: (siteUrl?: string, redirectUri?: string) => Promise<{ ok: boolean; url?: string; message?: string }>
+      }
       events: {
         onJobUpdated: (cb: (payload: any) => void) => () => void
         onResultCreated: (cb: (payload: any) => void) => () => void
+        onAuthCallback: (cb: (payload: { url: string; token?: string | null }) => void) => () => void
       }
     }
   }

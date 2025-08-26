@@ -62,6 +62,10 @@ const api = {
     get: (key: string) => ipcRenderer.invoke('config.get', { key }),
     set: (key: string, value: string) => ipcRenderer.invoke('config.set', { key, value })
   },
+  auth: {
+    openLogin: (siteUrl?: string, redirectUri?: string) =>
+      ipcRenderer.invoke('auth.openLogin', { siteUrl, redirectUri })
+  },
   events: {
     onJobUpdated: (cb: (payload: any) => void) => {
       const listener = (_: any, payload: any) => cb(payload)
@@ -72,6 +76,11 @@ const api = {
       const listener = (_: any, payload: any) => cb(payload)
       ipcRenderer.on('result.created', listener)
       return () => ipcRenderer.removeListener('result.created', listener)
+    },
+    onAuthCallback: (cb: (payload: { url: string; token?: string | null }) => void) => {
+      const listener = (_: any, payload: any) => cb(payload)
+      ipcRenderer.on('auth.callback', listener)
+      return () => ipcRenderer.removeListener('auth.callback', listener)
     }
   }
 }
