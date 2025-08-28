@@ -23,12 +23,11 @@
       </template>
     </UCard>
   </UContainer>
-</template>
+  </template>
 
 <script setup lang="ts">
 const state = reactive({ email: '', password: '' })
 function onSubmit() {
-  alert(`登录占位：\\n邮箱：${state.email}`)
+  alert(`登录占位：\n邮箱：${state.email}`)
 }
 </script>
-

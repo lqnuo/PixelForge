@@ -1,7 +1,5 @@
 // https://nuxt.com/docs/api/configuration/nuxt-config
 export default defineNuxtConfig({
-  // Use `app/` as source directory so routing reads from `app/pages/**`
-  srcDir: 'app',
   compatibilityDate: '2025-07-15',
   devtools: { enabled: true },
 

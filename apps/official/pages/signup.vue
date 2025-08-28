@@ -36,7 +36,6 @@ const plans = [
 ]
 const state = reactive({ email: '', password: '', plan: 'pro' })
 function onSubmit() {
-  alert(`注册占位：\\n邮箱：${state.email}\\n套餐：${state.plan}`)
+  alert(`注册占位：\n邮箱：${state.email}\n套餐：${state.plan}`)
 }
 </script>
-
