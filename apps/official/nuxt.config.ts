@@ -10,4 +10,9 @@ export default defineNuxtConfig({
     '@nuxt/test-utils',
     '@nuxt/ui'
   ]
+  ,
+  // Disable automatic font handling from @nuxt/ui (@nuxt/fonts)
+  ui: {
+    fonts: false
+  }
 })
