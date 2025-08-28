@@ -13,11 +13,10 @@
       </nav>
       <div class="flex items-center gap-2">
         <NuxtLink to="/login"><UButton color="gray" variant="ghost">登录</UButton></NuxtLink>
-        <NuxtLink to="/signup"><UButton>购买会员</UButton></NuxtLink>
+        <NuxtLink to="/pricing"><UButton>购买会员</UButton></NuxtLink>
       </div>
     </div>
   </UContainer>
 </template>
 
 <script setup lang="ts"></script>
-

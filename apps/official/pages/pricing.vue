@@ -16,7 +16,7 @@
               <li>本地导出</li>
               <li>社区模板</li>
             </ul>
-            <NuxtLink to="/signup"><UButton block>免费开始</UButton></NuxtLink>
+            <NuxtLink to="/login"><UButton block>免费开始</UButton></NuxtLink>
           </div>
         </UCard>
 
@@ -29,7 +29,7 @@
               <li>风格与尺寸预设</li>
               <li>优先下载通道</li>
             </ul>
-            <NuxtLink to="/signup"><UButton block>购买会员</UButton></NuxtLink>
+            <NuxtLink to="/login"><UButton block>购买会员</UButton></NuxtLink>
           </div>
         </UCard>
 
@@ -42,7 +42,7 @@
               <li>权限与审计</li>
               <li>企业支持</li>
             </ul>
-            <NuxtLink to="/signup"><UButton block>联系销售</UButton></NuxtLink>
+            <NuxtLink to="/login"><UButton block>联系销售</UButton></NuxtLink>
           </div>
         </UCard>
       </div>

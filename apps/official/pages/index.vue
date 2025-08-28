@@ -11,7 +11,7 @@
             以素材为中心，批量生成风格化图像与指定尺寸导出。内置任务队列、历史记录与下载管理，离线可用。
           </p>
           <div class="flex flex-wrap gap-3">
-            <NuxtLink to="/signup"><UButton size="lg">立即购买会员</UButton></NuxtLink>
+            <NuxtLink to="/login"><UButton size="lg">立即开始</UButton></NuxtLink>
             <NuxtLink to="/download"><UButton size="lg" variant="ghost">下载应用</UButton></NuxtLink>
           </div>
           <div class="flex items-center gap-6 text-gray-500 text-sm">
