@@ -11,5 +11,7 @@ test('home page renders and shows hero', async ({ page }) => {
   // Primary CTAs
   await expect(page.getByRole('link', { name: /下载|download/i })).toBeVisible()
   await expect(page.getByRole('link', { name: /定价|pricing/i })).toBeVisible()
-})
 
+  // Capture a full-page screenshot for visual inspection
+  await page.screenshot({ path: 'tests-artifacts/home.png', fullPage: true })
+})
